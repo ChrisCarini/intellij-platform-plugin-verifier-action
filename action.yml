@@ -1,0 +1,29 @@
+name: 'IntelliJ Platform Plugin Verifier'
+description: 'A GitHub Action for IntelliJ Platform Plugins to verify their compatibility with various JetBrains IDEs.'
+branding:
+  icon: 'check-square'
+  color: 'gray-dark'
+inputs:
+  verifier-version:
+    description: 'The version of verifier-all.jar to download and use for verification.'
+    required: true
+    # Find the latest version here: https://bintray.com/jetbrains/intellij-plugin-service/intellij-plugin-verifier
+    default: '1.231'  # 1.231 was published on 2020-03-13
+  plugin-location:
+    description: 'The location of the plugin; based from the root directory of your project; ie: `build/distributions/sample-intellij-plugin-*`'
+    required: true
+    # `build/distributions/*.zip` assumes the plugin is published to the standard location as a zip file.
+    default: 'build/distributions/*.zip'
+  ide-versions:
+    description: 'The list of IDE + version (separated by a `:`) to validate against.'
+    required: true
+outputs:
+  verification-output-log-filename:
+    description: The filename of the log file generated from the verification output. The output file contains both `stdout` and `stderr` streams.
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.verifier-version }}
+    - ${{ inputs.plugin-location }}
+    - ${{ inputs.ide-versions }}
