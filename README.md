@@ -165,6 +165,16 @@ In the below example, we use set the `id` to `verify` - this example will print 
 
 (**Note:** The file contents will include both `stdout` and `stderr` output from the plugin verification CLI.)
 
-## Contributing
+
+# Examples
+
+As examples of using this plugin you can check out following projects:
+
+- [Automatic Power Saver](https://plugins.jetbrains.com/plugin/11941-automatic-power-saver) - Automatically enable / disable power save mode on window focus changes.
+- [Environment Variable Settings Summary](https://plugins.jetbrains.com/plugin/10998-environment-variable-settings-summary) - Provides all system environment variables for troubleshooting.
+- [Logshipper](https://plugins.jetbrains.com/plugin/11195-logshipper) - Ship your IDE logs to a logstash service.
+- [intellij-sample-notification](https://plugins.jetbrains.com/plugin/10924-intellij-sample-notification) - Displays a simple notification upon Project Open.
+
+# Contributing
 
 Contributions welcomed! Feel free to open a PR, or issue.
