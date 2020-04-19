@@ -20,6 +20,19 @@
 set -eu
 
 ##
+# GitHub Debug Function
+##
+gh_debug() {
+  if (( $# == 0 )) ; then
+    while read line; do
+      echo "::debug::${line}"
+    done
+  else
+    echo "::debug::${1}"
+  fi
+}
+
+##
 # Input Variables
 ##
 
@@ -52,11 +65,11 @@ INPUT_PLUGIN_LOCATION="$2"
 # ide-versions: ['ideaIU:2019.3.4','ideaIC:2019.3.4','pycharmPC:2019.3.4','goland:2019.3.3','clion:2019.3.4']
 INPUT_IDE_VERSIONS="$3"
 
-echo "::debug::INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
-echo "::debug::INPUT_PLUGIN_LOCATION => $INPUT_PLUGIN_LOCATION"
-echo "::debug::INPUT_IDE_VERSIONS =>"
+gh_debug "INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
+gh_debug "INPUT_PLUGIN_LOCATION => $INPUT_PLUGIN_LOCATION"
+gh_debug "INPUT_IDE_VERSIONS =>"
 echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
-echo "::debug::                   => $INPUT_IDE_VERSION"
+gh_debug "                   => $INPUT_IDE_VERSION"
 done
 
 ##
@@ -77,9 +90,9 @@ VERIFIER_JAR_LOCATION="$HOME/$VERIFIER_JAR_FILENAME"
 # The location of the plugin
 PLUGIN_LOCATION="$GITHUB_WORKSPACE/$INPUT_PLUGIN_LOCATION"
 
-echo "::debug::VERIFIER_JAR_FILENAME => $VERIFIER_JAR_FILENAME"
-echo "::debug::VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
-echo "::debug::PLUGIN_LOCATION => $PLUGIN_LOCATION"
+gh_debug "VERIFIER_JAR_FILENAME => $VERIFIER_JAR_FILENAME"
+gh_debug "VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
+gh_debug "PLUGIN_LOCATION => $PLUGIN_LOCATION"
 
 # Variable to store the string of IDE tmp_ide_directories we're going to use for verification.
 IDE_DIRECTORIES=""
@@ -121,7 +134,7 @@ echo "Processing all IDE versions..."
 echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   echo "Processing IDE:Version = \"$IDE_VERSION\""
   if [ -z "$IDE_VERSION" ]; then
-    echo "::debug::IDE_VERSION is empty; continuing with next iteration."
+    gh_debug "IDE_VERSION is empty; continuing with next iteration."
     break
   fi
 
@@ -148,34 +161,34 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   unzip -q -d "$IDE_EXTRACT_LOCATION" "$HOME/$IDE-$VERSION.zip"
 
   # Append the extracted location to the variable of IDEs to validate against.
-  echo "::debug::Adding $IDE_EXTRACT_LOCATION to '$tmp_ide_directories'..."
+  gh_debug "Adding $IDE_EXTRACT_LOCATION to '$tmp_ide_directories'..."
   printf "%s " "$IDE_EXTRACT_LOCATION" >>$tmp_ide_directories
 done
 
 ##
 # Print ENVVARs for debugging.
 ##
-echo "::debug::=========================================================="
+gh_debug "=========================================================="
 # Get the contents of the file which stores the location of the extracted IDE directories,
 # removing whitespace from the beginning & end of the string.
 IDE_DIRECTORIES=$(cat "$tmp_ide_directories" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-echo "::debug::IDE_DIRECTORIES => [$IDE_DIRECTORIES]"
-echo "::debug::=========================================================="
-echo "::debug::which java: $(which java)"
-echo "::debug::JAVA_HOME: $JAVA_HOME"
-echo "::debug::=========================================================="
-echo "::debug::Contents of \$HOME => [$HOME] :"
-ls -lash $HOME | sed 's/^/::debug::/'
-echo "::debug::=========================================================="
-echo "::debug::Contents of \$GITHUB_WORKSPACE => [$GITHUB_WORKSPACE] :"
-ls -lash $GITHUB_WORKSPACE | sed 's/^/::debug::/'
-echo "::debug::=========================================================="
-echo "::debug::Contents of \$PLUGIN_LOCATION => [$PLUGIN_LOCATION] :"
-ls -lash $PLUGIN_LOCATION | sed 's/^/::debug::/'
-echo "::debug::=========================================================="
-echo "::debug::Contents of the current directory => [$(pwd)] :"
-ls -lash "$(pwd)" | sed 's/^/::debug::/'
-echo "::debug::=========================================================="
+gh_debug "IDE_DIRECTORIES => [$IDE_DIRECTORIES]"
+gh_debug "=========================================================="
+gh_debug "which java: $(which java)"
+gh_debug "JAVA_HOME: $JAVA_HOME"
+gh_debug "=========================================================="
+gh_debug "Contents of \$HOME => [$HOME] :"
+ls -lash $HOME | gh_debug
+gh_debug "=========================================================="
+gh_debug "Contents of \$GITHUB_WORKSPACE => [$GITHUB_WORKSPACE] :"
+ls -lash $GITHUB_WORKSPACE | gh_debug
+gh_debug "=========================================================="
+gh_debug "Contents of \$PLUGIN_LOCATION => [$PLUGIN_LOCATION] :"
+ls -lash $PLUGIN_LOCATION | gh_debug
+gh_debug "=========================================================="
+gh_debug "Contents of the current directory => [$(pwd)] :"
+ls -lash "$(pwd)" | gh_debug
+gh_debug "=========================================================="
 
 ##
 # Run the verification
@@ -183,7 +196,7 @@ echo "::debug::=========================================================="
 VERIFICATION_OUTPUT_LOG="verification_result.log"
 echo "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
 
-echo "::debug::RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES"
+gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES"
 
 # We don't wrap $IDE_DIRECTORIES in quotes at the end of this to allow
 # the single string of args (ie, `"a b c"`) be broken into multiple
