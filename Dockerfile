@@ -6,6 +6,9 @@
 # Ref: https://hub.docker.com/layers/openjdk/library/openjdk/8-jdk-alpine/images/sha256-210ecd2595991799526a62a7099718b149e3bbefdb49764cc2a450048e0dd4c0?context=explore
 FROM openjdk:8-jdk-alpine
 
+# We need jq to find the latest version of the verifier jar
+RUN apk --no-cache add jq
+
 # We need curl to download the verifier jar
 RUN apk --no-cache add curl
 

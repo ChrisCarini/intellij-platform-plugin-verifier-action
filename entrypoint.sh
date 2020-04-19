@@ -23,7 +23,7 @@ set -eu
 # GitHub Debug Function
 ##
 gh_debug() {
-  if (( $# == 0 )) ; then
+  if [[ "$#" -eq 0 ]] ; then
     while read line; do
       echo "::debug::${line}"
     done
@@ -72,6 +72,34 @@ echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
 gh_debug "                   => $INPUT_IDE_VERSION"
 done
 
+
+##
+# Resolve verifier values
+##
+if [[ "$INPUT_VERIFIER_VERSION" == "LATEST" ]]; then
+    gh_debug "LATEST verifier version found, resolving version..."
+    GH_LATEST_RELEASE_FILE="$HOME/intellij-plugin-verifier_latest_gh_release.json"
+    curl -s https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
+    VERIFIER_VERSION=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .tag_name | sed 's/[^[:digit:].]*//g')
+    VERIFIER_DOWNLOAD_URL=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].browser_download_url)
+    VERIFIER_JAR_FILENAME=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].name)
+else
+    gh_debug "Using verifier version [$INPUT_VERIFIER_VERSION]..."
+
+    VERIFIER_VERSION=${INPUT_VERIFIER_VERSION}
+    VERIFIER_DOWNLOAD_URL="https://dl.bintray.com/jetbrains/intellij-plugin-service/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
+    # The filename of the `verifier-cli-*-all.jar` file
+    VERIFIER_JAR_FILENAME="verifier-cli-$VERIFIER_VERSION-all.jar"
+fi
+
+# The full path of the `verifier-cli-*-all.jar` file
+VERIFIER_JAR_LOCATION="$HOME/$VERIFIER_JAR_FILENAME"
+
+gh_debug "VERIFIER_VERSION => $VERIFIER_VERSION"
+gh_debug "VERIFIER_DOWNLOAD_URL => $VERIFIER_DOWNLOAD_URL"
+gh_debug "VERIFIER_JAR_FILENAME => $VERIFIER_JAR_FILENAME"
+gh_debug "VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
+
 ##
 # Other Variables
 ##
@@ -80,12 +108,6 @@ done
 # We use the docker image `openjdk:8-jdk-alpine` - https://hub.docker.com/layers/openjdk/library/openjdk/8-jdk-alpine/images/sha256-210ecd2595991799526a62a7099718b149e3bbefdb49764cc2a450048e0dd4c0?context=explore
 #  and pull the `JAVA_HOME` property from it's image (ie, its definition has `ENV JAVA_HOME=/usr/lib/jvm/java-1.8-openjdk`).
 JAVA_HOME="/usr/lib/jvm/java-1.8-openjdk"
-
-# The filename of the `verifier-cli-*-all.jar` file
-VERIFIER_JAR_FILENAME="verifier-cli-$INPUT_VERIFIER_VERSION-all.jar"
-
-# The full path of the `verifier-cli-*-all.jar` file
-VERIFIER_JAR_LOCATION="$HOME/$VERIFIER_JAR_FILENAME"
 
 # The location of the plugin
 PLUGIN_LOCATION="$GITHUB_WORKSPACE/$INPUT_PLUGIN_LOCATION"
@@ -124,8 +146,8 @@ release_type_for() {
 # Setup
 ##
 
-echo "Downloading plugin verifier ($VERIFIER_JAR_FILENAME) [version '$INPUT_VERIFIER_VERSION']..."
-curl -L --output "$VERIFIER_JAR_LOCATION" "https://dl.bintray.com/jetbrains/intellij-plugin-service/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
+echo "Downloading plugin verifier [version '$INPUT_VERIFIER_VERSION'] from [$VERIFIER_DOWNLOAD_URL] to [$VERIFIER_JAR_LOCATION]..."
+curl -L --output "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL"
 
 # temp file for storing IDE Directories we download and unzip
 tmp_ide_directories="/tmp/ide_directories.txt"
@@ -162,7 +184,7 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   mkdir -p "$IDE_EXTRACT_LOCATION"
   unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
 
-  gh_debug "::debug::Removing [$ZIP_FILE_PATH] to save storage space..."
+  gh_debug "Removing [$ZIP_FILE_PATH] to save storage space..."
   rm "$ZIP_FILE_PATH"
 
   # Append the extracted location to the variable of IDEs to validate against.
@@ -217,7 +239,7 @@ java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIE
 
 echo "::set-output name=verification-output-log-filename::$VERIFICATION_OUTPUT_LOG"
 
-# Validate the log; fail if we find compatability problems.
+# Validate the log; fail if we find compatibility problems.
 if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?$" "$VERIFICATION_OUTPUT_LOG"); then
   echo "::error::=============================================="
   echo "::error::=============================================="

@@ -8,7 +8,12 @@ inputs:
     description: 'The version of verifier-all.jar to download and use for verification.'
     required: true
     # Find the latest version here: https://bintray.com/jetbrains/intellij-plugin-service/intellij-plugin-verifier
-    default: '1.236'  # 1.236 was published on 2020-04-17
+    #   and the latest GitHub tagged version here: https://github.com/JetBrains/intellij-plugin-verifier/tags
+    #
+    # `LATEST` is a special, internal, keyword to signal our script to automatically resolve the latest tagged version
+    #   from the GH repo of the intellij-plugin-verifier -> https://github.com/JetBrains/intellij-plugin-verifier/tags
+    # This option is presented to people in case they wish to explicitly override the version of the plugin verifier.
+    default: 'LATEST'
   plugin-location:
     description: 'The location of the plugin; based from the root directory of your project; ie: `build/distributions/sample-intellij-plugin-*`'
     required: true
