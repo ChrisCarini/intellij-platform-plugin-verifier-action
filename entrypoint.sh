@@ -152,13 +152,18 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   DOWNLOAD_URL="https://www.jetbrains.com/intellij-repository/$RELEASE_TYPE/com/jetbrains/intellij/$IDE_DIR/$IDE/$VERSION/$IDE-$VERSION.zip"
 
-  echo "Downloading [$DOWNLOAD_URL] into [$HOME/$IDE-$VERSION.zip]..."
-  curl -L --output "$HOME/$IDE-$VERSION.zip" "$DOWNLOAD_URL"
+  ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
+
+  echo "Downloading [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
+  curl -L --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL"
 
   IDE_EXTRACT_LOCATION="$HOME/ides/$IDE-$VERSION"
-  echo "Extracting [$HOME/$IDE-$VERSION.zip] into [$IDE_EXTRACT_LOCATION]..."
+  echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
   mkdir -p "$IDE_EXTRACT_LOCATION"
-  unzip -q -d "$IDE_EXTRACT_LOCATION" "$HOME/$IDE-$VERSION.zip"
+  unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
+
+  gh_debug "::debug::Removing [$ZIP_FILE_PATH] to save storage space..."
+  rm "$ZIP_FILE_PATH"
 
   # Append the extracted location to the variable of IDEs to validate against.
   gh_debug "Adding $IDE_EXTRACT_LOCATION to '$tmp_ide_directories'..."
