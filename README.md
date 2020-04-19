@@ -178,3 +178,11 @@ As examples of using this plugin you can check out following projects:
 # Contributing
 
 Contributions welcomed! Feel free to open a PR, or issue.
+
+## Debugging
+This action has [GitHub Actions Debug Logging](https://help.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-step-debug-logging).
+
+To enable, set the following secret in the repository that contains the workflow using this action to `true`.
+- `ACTIONS_STEP_DEBUG`
+
+You can find this under the repositories `Settings -> Secrets` menu.

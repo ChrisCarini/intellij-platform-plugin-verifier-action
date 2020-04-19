@@ -1,5 +1,22 @@
 #!/bin/sh
 
+###
+# This script expects 3 input variables:
+#  - intellij-plugin-verifier version
+#  - relative plugin path
+#  - new-line separated IDE + version
+#
+# See below for examples of these inputs.
+#
+# This script expects the following CLI tools be available:
+#   - curl
+#   - jq
+#
+# NOTE: This script works with GitHub Actions Debug Logging. Read more about it here: https://help.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-step-debug-logging
+#       To enable, set the following secret in the repository that contains the workflow using this action:
+#             - ACTIONS_STEP_DEBUG to true
+###
+
 set -eu
 
 ##
@@ -37,7 +54,10 @@ INPUT_IDE_VERSIONS="$3"
 
 echo "::debug::INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
 echo "::debug::INPUT_PLUGIN_LOCATION => $INPUT_PLUGIN_LOCATION"
-echo "::debug::INPUT_IDE_VERSIONS => $INPUT_IDE_VERSIONS"
+echo "::debug::INPUT_IDE_VERSIONS =>"
+echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
+echo "::debug::                   => $INPUT_IDE_VERSION"
+done
 
 ##
 # Other Variables
