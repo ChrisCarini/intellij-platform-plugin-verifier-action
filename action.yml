@@ -8,7 +8,7 @@ inputs:
     description: 'The version of verifier-all.jar to download and use for verification.'
     required: true
     # Find the latest version here: https://bintray.com/jetbrains/intellij-plugin-service/intellij-plugin-verifier
-    default: '1.231'  # 1.231 was published on 2020-03-13
+    default: '1.236'  # 1.236 was published on 2020-04-17
   plugin-location:
     description: 'The location of the plugin; based from the root directory of your project; ie: `build/distributions/sample-intellij-plugin-*`'
     required: true
