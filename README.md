@@ -1,3 +1,5 @@
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action)
+
 # IntelliJ Platform Plugin Verifier Action
 A [GitHub Action](https://help.github.com/en/actions) for executing the [JetBrains intellij-plugin-verifier](https://github.com/JetBrains/intellij-plugin-verifier).
 
