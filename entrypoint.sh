@@ -72,6 +72,15 @@ echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
 gh_debug "                   => $INPUT_IDE_VERSION"
 done
 
+# If the user passed in a file instead of a list, pull the IDE+version combos from the file and use that instead.
+if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
+  gh_debug "$INPUT_IDE_VERSIONS is a file. Extracting file contents into variable."
+  INPUT_IDE_VERSIONS=$(cat "$INPUT_IDE_VERSIONS")
+  gh_debug "INPUT_IDE_VERSIONS =>"
+  echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
+    gh_debug "                   => $INPUT_IDE_VERSION"
+  done
+fi
 
 ##
 # Resolve verifier values
