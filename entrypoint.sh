@@ -239,8 +239,7 @@ java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIE
 
 echo "::set-output name=verification-output-log-filename::$VERIFICATION_OUTPUT_LOG"
 
-# Validate the log; fail if we find compatibility problems.
-if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?$" "$VERIFICATION_OUTPUT_LOG"); then
+error_wall() {
   echo "::error::=============================================="
   echo "::error::=============================================="
   echo "::error::===                                        ==="
@@ -249,6 +248,13 @@ if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?$" "$VERIFICA
   echo "::error::=============================================="
   echo "::error::=============================================="
   exit 1 # An error has occurred.
+}
+
+# Validate the log; fail if we find compatibility problems.
+if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?$" "$VERIFICATION_OUTPUT_LOG"); then
+  error_wall
+elif egrep -q "^The following files specified for the verification are not valid plugins:$" "$VERIFICATION_OUTPUT_LOG"; then
+  error_wall
 fi
 
 # Everything verified ok.
