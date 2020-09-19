@@ -1,7 +1,7 @@
 # IntelliJ Platform Plugin Verifier Action
 A [GitHub Action](https://help.github.com/en/actions) for executing the [JetBrains intellij-plugin-verifier](https://github.com/JetBrains/intellij-plugin-verifier).
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-v0.0.2-blue.svg?logo=github&logoColor=white&style=flat)](https://github.com/marketplace/actions/intellij-platform-plugin-verifier)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-v1.0.3-blue.svg?logo=github&logoColor=white&style=flat)](https://github.com/marketplace/actions/intellij-platform-plugin-verifier)
 
 # Usage
 Add the action to your [GitHub Action Workflow file](https://help.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#creating-a-workflow-file) - the only thing you _need_ to specify are the JetBrains products & versions you wish to run against.
@@ -9,7 +9,7 @@ Add the action to your [GitHub Action Workflow file](https://help.github.com/en/
 A minimal example of a workflow step is below:
 ```yaml
   - name: Verify Plugin on IntelliJ Platforms
-    uses: ChrisCarini/intellij-platform-plugin-verifier-action@v0.0.2
+    uses: ChrisCarini/intellij-platform-plugin-verifier-action@v1.0.3
     with:
       ide-versions: |
         ideaIC:2019.3
@@ -43,7 +43,7 @@ A minimal example of a workflow step is below:
     
           - name: Verify Plugin on IntelliJ Platforms
             id: verify
-            uses: ChrisCarini/intellij-platform-plugin-verifier-action@v0.0.2
+            uses: ChrisCarini/intellij-platform-plugin-verifier-action@v1.0.3
             with:
               ide-versions: |
                 ideaIC:2019.3
@@ -73,7 +73,7 @@ An example using all the available options is below:
 ```yaml
   - name: Verify Plugin on IntelliJ Platforms
     id: verify
-    uses: ChrisCarini/intellij-platform-plugin-verifier-action@v0.0.2
+    uses: ChrisCarini/intellij-platform-plugin-verifier-action@v1.0.3
     with:
       verifier-version: '1.230'
       plugin-location: 'build/distributions/sample-intellij-plugin-*.zip'
@@ -176,7 +176,7 @@ In the below example, we use set the `id` to `verify` - this example will print 
 ```yaml
       - name: Verify Plugin on IntelliJ Platforms
         id: verify
-        uses: ChrisCarini/intellij-platform-plugin-verifier-action@v0.0.2
+        uses: ChrisCarini/intellij-platform-plugin-verifier-action@v1.0.3
         with:
           ide-versions: |
             ideaIC:2019.3
