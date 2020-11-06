@@ -260,7 +260,7 @@ error_wall() {
 }
 
 # Validate the log; fail if we find compatibility problems.
-if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?$" "$VERIFICATION_OUTPUT_LOG"); then
+if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?" "$VERIFICATION_OUTPUT_LOG"); then
   error_wall
 elif egrep -q "^The following files specified for the verification are not valid plugins:$" "$VERIFICATION_OUTPUT_LOG"; then
   error_wall
