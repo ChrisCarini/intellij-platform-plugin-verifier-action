@@ -82,6 +82,20 @@ if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
   done
 fi
 
+# Check if there are duplicate entries in the list of IDE_VERSIONS, if so, error out and show the user a clear message
+detect=$(printf '%s\n' "${INPUT_IDE_VERSIONS[@]}"|awk '!($0 in seen){seen[$0];next} 1')
+if [[ ${#detect} -gt 8 ]] ; then
+    echo "::error::Duplicate ide-versions found:"
+    echo "$detect" | while read -r INPUT_IDE_VERSION; do
+      echo "::error::        => $INPUT_IDE_VERSION"
+    done
+    echo "::error::"
+    echo "::error::Please remove the duplicate entries before proceeding."
+    exit 1 # An error has occurred - duplicate ide-version entries found.
+else
+    gh_debug "No duplicate IDE_VERSIONS found, proceeding..."
+fi
+
 ##
 # Resolve verifier values
 ##
