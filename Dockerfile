@@ -15,6 +15,9 @@ RUN apk --no-cache add jq
 # We need curl to download the verifier jar
 RUN apk --no-cache add curl
 
+# We need zip to test the downloaded IDEs
+RUN apk --no-cache add zip
+
 # Copies your code file from the repository to the filesystem path `/` of the container
 COPY entrypoint.sh /entrypoint.sh
 

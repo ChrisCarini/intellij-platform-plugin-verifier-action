@@ -17,7 +17,8 @@
 #             - ACTIONS_STEP_DEBUG to true
 ###
 
-set -eu
+set -o errexit
+set -o nounset
 
 ##
 # GitHub Debug Function
@@ -201,6 +202,33 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   echo "Downloading [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
   curl -L --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL"
+
+  gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
+  # Turn off 'exit on error', as if we error out when testing the zip we want
+  # to print a friendly message to the user and skip this version and proceed.
+  set +o errexit
+  zip -T "$ZIP_FILE_PATH"
+  if [[ $? -eq 0 ]]; then
+    gh_debug "[$ZIP_FILE_PATH] appears to be a valid zip file. Proceeding..."
+  else
+    message=$(cat <<EOF
+::warning::=======================================================================================
+::warning::It appears $ZIP_FILE_PATH is not a valid zip file.
+::warning::
+::warning::This can happen when the download did not work properly, or if $IDE_VERSION is
+::warning::not a valid IDE / version. If you believe it is a valid version, please open
+::warning::an issue on GitHub:
+::warning::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::warning::
+::warning::For the time being, this IDE / Version is being skipped.
+::warning::=======================================================================================
+EOF)
+    # Print the message
+    echo "$message"
+    continue
+  fi
+  # Restore 'exit on error', as the test is over.
+  set -o errexit
 
   IDE_EXTRACT_LOCATION="$HOME/ides/$IDE-$VERSION"
   echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
