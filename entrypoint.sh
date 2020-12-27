@@ -252,7 +252,7 @@ EOF
 ::error::an issue on GitHub:
 ::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
 ::error::
-::error::For the time being, this IDE / Version is being skipped.
+::error::As a precaution, we are failing this execution.
 ::error::=======================================================================================
 EOF
     # Print the message
