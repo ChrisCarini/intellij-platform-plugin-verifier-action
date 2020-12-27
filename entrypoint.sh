@@ -200,32 +200,64 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
 
-  echo "Downloading [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
-  curl -L --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL"
+  echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
+  CURL_RESP=$(curl -L --silent --show-error -w 'HTTP/%{http_code} - content-type: %{content_type}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
+
+  gh_debug_disk_space
+
+  gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
+  # Turn off 'exit on error'; if we error out when testing the response code,
+  # we want to first print a friendly message to the user and then exit.
+  set +o errexit
+  echo "$CURL_RESP" | grep "HTTP/200 - content-type: application/octet-stream"
+  if [[ $? -eq 0 ]]; then
+    gh_debug "Download of [$DOWNLOAD_URL] to [$ZIP_FILE_PATH] was successful."
+  else
+    read -r -d '' message <<EOF
+::error::=======================================================================================
+::error::It appears the download of $DOWNLOAD_URL did not contain the following:
+::error::    - status: 200
+::error::    - content-type: application/octet-stream
+::error::
+::error::Actual response: $CURL_RESP
+::error::
+::error::This can happen if $IDE_VERSION is not a valid IDE / version. If you believe it is a
+::error::valid ide/version, please open an issue on GitHub:
+::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::error::
+::error::As a precaution, we are failing this execution.
+::error::=======================================================================================
+EOF
+    # Print the message
+    echo "$message"
+    exit 1 # An error has occurred - invalid download headers.
+  fi
+  # Restore 'exit on error', as the test is over.
+  set -o errexit
 
   gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
-  # Turn off 'exit on error', as if we error out when testing the zip we want
-  # to print a friendly message to the user and skip this version and proceed.
+  # Turn off 'exit on error'; if we error out when testing the zip file,
+  # we want to first print a friendly message to the user and then exit.
   set +o errexit
   zip -T "$ZIP_FILE_PATH"
   if [[ $? -eq 0 ]]; then
     gh_debug "[$ZIP_FILE_PATH] appears to be a valid zip file. Proceeding..."
   else
-    message=$(cat <<EOF
-::warning::=======================================================================================
-::warning::It appears $ZIP_FILE_PATH is not a valid zip file.
-::warning::
-::warning::This can happen when the download did not work properly, or if $IDE_VERSION is
-::warning::not a valid IDE / version. If you believe it is a valid version, please open
-::warning::an issue on GitHub:
-::warning::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
-::warning::
-::warning::For the time being, this IDE / Version is being skipped.
-::warning::=======================================================================================
-EOF)
+    read -r -d '' message <<EOF
+::error::=======================================================================================
+::error::It appears $ZIP_FILE_PATH is not a valid zip file.
+::error::
+::error::This can happen when the download did not work properly, or if $IDE_VERSION is
+::error::not a valid IDE / version. If you believe it is a valid version, please open
+::error::an issue on GitHub:
+::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::error::
+::error::For the time being, this IDE / Version is being skipped.
+::error::=======================================================================================
+EOF
     # Print the message
     echo "$message"
-    continue
+    exit 1 # An error has occurred - invalid zip file.
   fi
   # Restore 'exit on error', as the test is over.
   set -o errexit
