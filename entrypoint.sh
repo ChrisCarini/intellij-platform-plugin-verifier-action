@@ -66,6 +66,8 @@ INPUT_PLUGIN_LOCATION="$2"
 # ide-versions: ['ideaIU:2019.3.4','ideaIC:2019.3.4','pycharmPC:2019.3.4','goland:2019.3.3','clion:2019.3.4']
 INPUT_IDE_VERSIONS="$3"
 
+echo "::group::Initializing..."
+
 gh_debug "INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
 gh_debug "INPUT_PLUGIN_LOCATION => $INPUT_PLUGIN_LOCATION"
 gh_debug "INPUT_IDE_VERSIONS =>"
@@ -103,7 +105,7 @@ fi
 if [[ "$INPUT_VERIFIER_VERSION" == "LATEST" ]]; then
     gh_debug "LATEST verifier version found, resolving version..."
     GH_LATEST_RELEASE_FILE="$HOME/intellij-plugin-verifier_latest_gh_release.json"
-    curl -s https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
+    curl --silent --show-error https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
     VERIFIER_VERSION=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .tag_name | sed 's/[^[:digit:].]*//g')
     VERIFIER_DOWNLOAD_URL=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].browser_download_url)
     VERIFIER_JAR_FILENAME=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].name)
@@ -171,14 +173,23 @@ release_type_for() {
 ##
 
 echo "Downloading plugin verifier [version '$INPUT_VERIFIER_VERSION'] from [$VERIFIER_DOWNLOAD_URL] to [$VERIFIER_JAR_LOCATION]..."
-curl -L --output "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL"
+curl -L --silent --show-error --output "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL"
+
+echo "::endgroup::" # END "Initializing..." block
 
 # temp file for storing IDE Directories we download and unzip
 tmp_ide_directories="/tmp/ide_directories.txt"
 
-echo "Processing all IDE versions..."
+# temp file for storing messages to display after the below loop.
+# we use this, as each iteration of the loop has it's respective
+# log messages hidden via a log group, which hides the output
+# from the user; by printing any messages after the loop, it is
+# more obvious to the user.
+post_loop_messages="/tmp/post_loop_messages.txt"
+
+echo "Preparing all IDE versions specified..."
 echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
-  echo "Processing IDE:Version = \"$IDE_VERSION\""
+  echo "::group::Preparing [$IDE_VERSION]..."
   if [ -z "$IDE_VERSION" ]; then
     gh_debug "IDE_VERSION is empty; continuing with next iteration."
     break
@@ -203,8 +214,6 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
   CURL_RESP=$(curl -L --silent --show-error -w 'HTTP/%{http_code} - content-type: %{content_type}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
 
-  gh_debug_disk_space
-
   gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
   # Turn off 'exit on error'; if we error out when testing the response code,
   # we want to first print a friendly message to the user and then exit.
@@ -228,8 +237,8 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 ::error::As a precaution, we are failing this execution.
 ::error::=======================================================================================
 EOF
-    # Print the message
-    echo "$message"
+    # Print the message once in this log group, and then save for after so it's more visible to the user.
+    echo "$message" ; echo "$message" >> $post_loop_messages
     exit 1 # An error has occurred - invalid download headers.
   fi
   # Restore 'exit on error', as the test is over.
@@ -255,8 +264,8 @@ EOF
 ::error::As a precaution, we are failing this execution.
 ::error::=======================================================================================
 EOF
-    # Print the message
-    echo "$message"
+    # Print the message once in this log group, and then save for after so it's more visible to the user.
+    echo "$message" ; echo "$message" >> $post_loop_messages
     exit 1 # An error has occurred - invalid zip file.
   fi
   # Restore 'exit on error', as the test is over.
@@ -272,8 +281,13 @@ EOF
 
   # Append the extracted location to the variable of IDEs to validate against.
   gh_debug "Adding $IDE_EXTRACT_LOCATION to '$tmp_ide_directories'..."
-  printf "%s " "$IDE_EXTRACT_LOCATION" >>$tmp_ide_directories
+  printf "%s " "$IDE_EXTRACT_LOCATION" >> $tmp_ide_directories
+  echo "::endgroup::" # END "Processing IDE:Version = \"$IDE_VERSION\"" block.
 done
+
+# Print any messages from the loop - we do this outside of the loop so that
+# any warning / error messages are not masked by the log group.
+cat $post_loop_messages
 
 ##
 # Print ENVVARs for debugging.
@@ -299,12 +313,13 @@ gh_debug "=========================================================="
 gh_debug "Contents of the current directory => [$(pwd)] :"
 ls -lash "$(pwd)" | gh_debug
 gh_debug "=========================================================="
+echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
 
 ##
 # Run the verification
 ##
 VERIFICATION_OUTPUT_LOG="verification_result.log"
-echo "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
+echo "::group::Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
 
 gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES"
 
@@ -320,6 +335,8 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 # shellcheck disable=SC2086
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
 
+echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
+
 echo "::set-output name=verification-output-log-filename::$VERIFICATION_OUTPUT_LOG"
 
 error_wall() {
@@ -330,7 +347,7 @@ error_wall() {
   echo "::error::===                                        ==="
   echo "::error::=============================================="
   echo "::error::=============================================="
-  exit 1 # An error has occurred.
+  exit 1 # An error has occurred - plugin verification failure.
 }
 
 # Validate the log; fail if we find compatibility problems.
