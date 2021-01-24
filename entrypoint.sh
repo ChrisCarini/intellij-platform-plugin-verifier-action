@@ -1,10 +1,11 @@
 #!/bin/bash
 
 ###
-# This script expects 3 input variables:
+# This script expects 4 input variables:
 #  - intellij-plugin-verifier version
 #  - relative plugin path
 #  - new-line separated IDE + version
+#  - new-line separated Failure Levels
 #
 # See below for examples of these inputs.
 #
@@ -66,6 +67,29 @@ INPUT_PLUGIN_LOCATION="$2"
 # ide-versions: ['ideaIU:2019.3.4','ideaIC:2019.3.4','pycharmPC:2019.3.4','goland:2019.3.3','clion:2019.3.4']
 INPUT_IDE_VERSIONS="$3"
 
+# Found from: https://github.com/JetBrains/gradle-intellij-plugin/blob/main/src/master/groovy/org/jetbrains/intellij/tasks/RunPluginVerifierTask.groovy#L29
+#
+# Easy way to simulate the input:
+#
+#   FAILURE_LEVELS=$(
+#     cat <<-END
+#       COMPATIBILITY_WARNINGS
+#       COMPATIBILITY_PROBLEMS
+#       DEPRECATED_API_USAGES
+#       EXPERIMENTAL_API_USAGES
+#       INTERNAL_API_USAGES
+#       OVERRIDE_ONLY_API_USAGES
+#       NON_EXTENDABLE_API_USAGES
+#       PLUGIN_STRUCTURE_WARNINGS
+#       MISSING_DEPENDENCIES
+#       INVALID_PLUGIN
+#       NOT_DYNAMIC
+#   END
+#   )
+#
+# failure-levels: ['COMPATIBILITY_PROBLEMS', 'INVALID_PLUGIN']
+FAILURE_LEVELS="$4"
+
 echo "::group::Initializing..."
 
 gh_debug "INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
@@ -73,6 +97,10 @@ gh_debug "INPUT_PLUGIN_LOCATION => $INPUT_PLUGIN_LOCATION"
 gh_debug "INPUT_IDE_VERSIONS =>"
 echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
 gh_debug "                   => $INPUT_IDE_VERSION"
+done
+gh_debug "FAILURE_LEVELS =>"
+echo "$FAILURE_LEVELS" | while read -r FAILURE_LEVEL; do
+gh_debug "               => $FAILURE_LEVEL"
 done
 
 # If the user passed in a file instead of a list, pull the IDE+version combos from the file and use that instead.
@@ -168,6 +196,45 @@ release_type_for() {
   esac
 }
 
+isFailureLevelSet () {
+  CHECK_OUTPUT_FILENAME="$1"
+  CHECK_FAILURE_LEVEL="$2"
+  CHECK_MESSAGE="$3"
+
+  # Turn off 'exit on error'; we want to capture the exit code, and handle it accordingly.
+  set +o errexit
+
+  # Check if the specified failure level is in the input list
+  echo "$FAILURE_LEVELS" | grep -q "$CHECK_FAILURE_LEVEL"
+  FAILURE_LEVELS_CONTAINS=$?
+
+  # Check if the specified message exists in the specified file
+  egrep -q "$CHECK_MESSAGE" "$CHECK_OUTPUT_FILENAME"
+  FILE_CONTAINS=$?
+
+  # Restore 'exit on error' to "ON", as the test is over.
+  set -o errexit
+
+  gh_debug ""
+  echo "Checking for the presence of [$CHECK_MESSAGE] in the verifier output..."
+  gh_debug "FAILURE_LEVELS_CONTAINS = $FAILURE_LEVELS_CONTAINS"
+  gh_debug "FILE_CONTAINS = $FILE_CONTAINS"
+  gh_debug "Is [$CHECK_FAILURE_LEVEL] in [$(echo "$FAILURE_LEVELS" | xargs | sed -e 's/ /, /g')]? = $FAILURE_LEVELS_CONTAINS"
+  gh_debug "Is [$CHECK_MESSAGE] in the file [$CHECK_OUTPUT_FILENAME]? = $FILE_CONTAINS"
+
+  if [ ${FAILURE_LEVELS_CONTAINS} == 0 ] && [ ${FILE_CONTAINS} == 0 ]; then
+    # We end the block here, as the next thing that will be printed is the failure banner.
+    gh_debug "Both checks are true(0)."
+    echo "[$CHECK_MESSAGE] was found in the verifier output. Failing check."
+    echo "::endgroup::" # END "Running validations against output..." block.
+
+    return 0
+  else
+    gh_debug "One or more of the above checks is false(1)."
+    return 1
+  fi
+}
+
 ##
 # Setup
 ##
@@ -186,6 +253,8 @@ tmp_ide_directories="/tmp/ide_directories.txt"
 # from the user; by printing any messages after the loop, it is
 # more obvious to the user.
 post_loop_messages="/tmp/post_loop_messages.txt"
+
+touch "$post_loop_messages"
 
 echo "Preparing all IDE versions specified..."
 echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
@@ -332,8 +401,17 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 #         cat "a b c"
 # Thus, we are disabling the `shellcheck` below - https://github.com/koalaman/shellcheck/wiki/SC2086
 #
+
+# Turn off 'exit on error'; if we error out when testing the response code,
+# we want to first print a friendly message to the user and then exit.
+set +o errexit
+
 # shellcheck disable=SC2086
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
+VERIFICATION_SUCCESSFUL=$?
+
+# Restore 'exit on error', as the test is over.
+set -o errexit
 
 echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
 
@@ -351,10 +429,82 @@ error_wall() {
 }
 
 # Validate the log; fail if we find compatibility problems.
-if (grep -E -q "^Plugin (.*) against .*: .* compatibility problems?" "$VERIFICATION_OUTPUT_LOG"); then
+
+echo "::group::Running validations against output..."
+# The below if/elif blocks are taken from the `gradle-intellij-plugin`'s RunPluginVerifierTask.groovy file, where
+# the `FailureLevel` Enum is specified with the below information. A link is below for reference:
+# Link: https://github.com/JetBrains/gradle-intellij-plugin/blob/ea5eb75548af4b368f2bd981d8c2d338edb3208d/src/main/groovy/org/jetbrains/intellij/tasks/RunPluginVerifierTask.groovy#L29
+
+# COMPATIBILITY_WARNINGS("Compatibility warnings"),
+if isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "COMPATIBILITY_WARNINGS" "Compatibility warnings"; then
   error_wall
-elif egrep -q "^The following files specified for the verification are not valid plugins:$" "$VERIFICATION_OUTPUT_LOG"; then
+
+# COMPATIBILITY_PROBLEMS("Compatibility problems"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "COMPATIBILITY_PROBLEMS" "^Plugin (.*) against .*: .* compatibility problems?"; then
   error_wall
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "COMPATIBILITY_PROBLEMS" "Compatibility problems"; then
+  error_wall
+
+# DEPRECATED_API_USAGES("Deprecated API usages"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "DEPRECATED_API_USAGES" "Deprecated API usages"; then
+  error_wall
+
+# EXPERIMENTAL_API_USAGES("Experimental API usages"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "EXPERIMENTAL_API_USAGES" "Experimental API usages"; then
+  error_wall
+
+# INTERNAL_API_USAGES("Internal API usages"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "INTERNAL_API_USAGES" "Internal API usages"; then
+  error_wall
+
+# OVERRIDE_ONLY_API_USAGES("Override-only API usages"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "OVERRIDE_ONLY_API_USAGES" "Override-only API usages"; then
+  error_wall
+
+# NON_EXTENDABLE_API_USAGES("Non-extendable API usages"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NON_EXTENDABLE_API_USAGES" "Non-extendable API usages"; then
+  error_wall
+
+# PLUGIN_STRUCTURE_WARNINGS("Plugin structure warnings"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "PLUGIN_STRUCTURE_WARNINGS" "Plugin structure warnings"; then
+  error_wall
+
+# MISSING_DEPENDENCIES("Missing dependencies"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "MISSING_DEPENDENCIES" "Missing dependencies"; then
+  error_wall
+
+# INVALID_PLUGIN("The following files specified for the verification are not valid plugins"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "INVALID_PLUGIN" "The following files specified for the verification are not valid plugins"; then
+  error_wall
+
+# NOT_DYNAMIC("Plugin cannot be loaded/unloaded without IDE restart");
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NOT_DYNAMIC" "Plugin cannot be loaded/unloaded without IDE restart"; then
+  error_wall
+
+elif [ ${VERIFICATION_SUCCESSFUL} == 1 ]; then
+  # We end the block here, as only `isFailureLevelSet` sets the endgroup for us.
+  echo "::endgroup::" # END "Running validations against output..." block.
+
+  echo "::error::======================================================="
+  echo "::error::======================================================="
+  echo "::error::===                                                 ==="
+  echo "::error::===    UNKNOWN FAILURE DURING VERIFICATION CHECK    ==="
+  echo "::error::===                                                 ==="
+  echo "::error::===   NOTICE!  NOTICE!  NOTICE!  NOTICE!  NOTICE!   ==="
+  echo "::error::===                                                 ==="
+  echo "::error::===   The verifier exited with a status code of 0   ==="
+  echo "::error::===   and was unable to identify a known failure    ==="
+  echo "::error::===   from the verifier. Consider opening an        ==="
+  echo "::error::===   issue with the maintainers of this GitHub     ==="
+  echo "::error::===   Action to notify them. A link is provided     ==="
+  echo "::error::===   below:                                        ==="
+  echo "::error::===-------------------------------------------------==="
+  echo "::error::=== Bug URL: https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new?labels=enhancement%2C+unknown-failure&template=unknown-failure-during-verification-check.md&title=Unknown+Failure+Identified%21"
+  echo "::error::===-------------------------------------------------==="
+  exit 1 # An error has occurred - plugin verification failure.
+else
+  # We end the block here, nothing else would have ended it.
+  echo "::endgroup::" # END "Running validations against output..." block.
 fi
 
 # Everything verified ok.
