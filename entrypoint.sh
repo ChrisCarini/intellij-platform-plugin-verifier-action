@@ -22,7 +22,7 @@ set -o errexit
 set -o nounset
 
 ##
-# GitHub Debug Function
+# GitHub Debug Functions
 ##
 gh_debug() {
   if [[ "$#" -eq 0 ]] ; then
@@ -32,6 +32,34 @@ gh_debug() {
   else
     echo "::debug::${1}"
   fi
+}
+
+# Note: We can *NOT* pass `$LINENO` into the trap, as the `EXIT` trap always shows the line being '1'. Yes, even
+#       if it shows something else on your development machine. :(
+trap 'exit_trap $?' EXIT
+exit_trap() {
+  gh_debug "Script exited with status code [$1]."
+  case $1 in
+    0)  gh_debug "Everything went as desired. Goodbye." ;;
+    64) echo "::error::Exiting due to a known, handled exception - duplicate ide-version entries found." ;;
+    65) echo "::error::Exiting due to a known, handled exception - invalid download headers when downloading an IDE." ;;
+    66) echo "::error::Exiting due to a known, handled exception - invalid zip file downloaded." ;;
+    67) echo "::error::Exiting due to a known, handled, plugin validation failure." ;;
+    68) echo "::error::Exiting due to an unhandled plugin validation failure." ;;
+
+    *) cat <<EOF
+::error::=======================================================
+::error::===-------------------------------------------------===
+::error::=== An unexpected error occurred. Status code [$1].
+::error::===
+::error::=== Please consider opening a bug for the developer:
+::error::===    - Bug URL: https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::error::===    - Status Code: $1
+::error::===-------------------------------------------------===
+::error::=======================================================
+EOF
+      ;;
+  esac
 }
 
 ##
@@ -122,7 +150,7 @@ if [[ ${#detect} -gt 8 ]] ; then
     done
     echo "::error::"
     echo "::error::Please remove the duplicate entries before proceeding."
-    exit 1 # An error has occurred - duplicate ide-version entries found.
+    exit 64 # An error has occurred - duplicate ide-version entries found.
 else
     gh_debug "No duplicate IDE_VERSIONS found, proceeding..."
 fi
@@ -308,7 +336,7 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 EOF
     # Print the message once in this log group, and then save for after so it's more visible to the user.
     echo "$message" ; echo "$message" >> $post_loop_messages
-    exit 1 # An error has occurred - invalid download headers.
+    exit 65 # An error has occurred - invalid download headers.
   fi
   # Restore 'exit on error', as the test is over.
   set -o errexit
@@ -335,7 +363,7 @@ EOF
 EOF
     # Print the message once in this log group, and then save for after so it's more visible to the user.
     echo "$message" ; echo "$message" >> $post_loop_messages
-    exit 1 # An error has occurred - invalid zip file.
+    exit 66 # An error has occurred - invalid zip file.
   fi
   # Restore 'exit on error', as the test is over.
   set -o errexit
@@ -425,7 +453,7 @@ error_wall() {
   echo "::error::===                                        ==="
   echo "::error::=============================================="
   echo "::error::=============================================="
-  exit 1 # An error has occurred - plugin verification failure.
+  exit 67 # An error has occurred - plugin verification failure.
 }
 
 # Validate the log; fail if we find compatibility problems.
@@ -501,7 +529,7 @@ elif [ ${VERIFICATION_SUCCESSFUL} == 1 ]; then
   echo "::error::===-------------------------------------------------==="
   echo "::error::=== Bug URL: https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new?labels=enhancement%2C+unknown-failure&template=unknown-failure-during-verification-check.md&title=Unknown+Failure+Identified%21"
   echo "::error::===-------------------------------------------------==="
-  exit 1 # An error has occurred - plugin verification failure.
+  exit 68 # An error has occurred - plugin verification failure.
 else
   # We end the block here, nothing else would have ended it.
   echo "::endgroup::" # END "Running validations against output..." block.
