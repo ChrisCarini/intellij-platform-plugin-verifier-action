@@ -21,7 +21,7 @@ set -o errexit
 set -o nounset
 
 ##
-# GitHub Debug Function
+# GitHub Debug Functions
 ##
 gh_debug() {
   if [[ "$#" -eq 0 ]] ; then
@@ -31,6 +31,13 @@ gh_debug() {
   else
     echo "::debug::${1}"
   fi
+}
+
+gh_debug_disk_space() {
+  ##
+  # ================== DISK SPACE CHECK ==================
+  ##
+  df -h | gh_debug
 }
 
 ##
@@ -168,12 +175,16 @@ release_type_for() {
   esac
 }
 
+gh_debug_disk_space
+
 ##
 # Setup
 ##
 
 echo "Downloading plugin verifier [version '$INPUT_VERIFIER_VERSION'] from [$VERIFIER_DOWNLOAD_URL] to [$VERIFIER_JAR_LOCATION]..."
 curl -L --silent --show-error --output "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL"
+
+gh_debug_disk_space
 
 echo "::endgroup::" # END "Initializing..." block
 
@@ -213,6 +224,8 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
   CURL_RESP=$(curl -L --silent --show-error -w 'HTTP/%{http_code} - content-type: %{content_type}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
+
+  gh_debug_disk_space
 
   gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
   # Turn off 'exit on error'; if we error out when testing the response code,
@@ -276,8 +289,12 @@ EOF
   mkdir -p "$IDE_EXTRACT_LOCATION"
   unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
 
+  gh_debug_disk_space
+
   gh_debug "Removing [$ZIP_FILE_PATH] to save storage space..."
   rm "$ZIP_FILE_PATH"
+
+  gh_debug_disk_space
 
   # Append the extracted location to the variable of IDEs to validate against.
   gh_debug "Adding $IDE_EXTRACT_LOCATION to '$tmp_ide_directories'..."
@@ -336,6 +353,8 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
 
 echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
+
+gh_debug_disk_space
 
 echo "::set-output name=verification-output-log-filename::$VERIFICATION_OUTPUT_LOG"
 
