@@ -22,6 +22,15 @@ inputs:
   ide-versions:
     description: 'The list of IDE + version (separated by a `:`) to validate against.'
     required: true
+  failure-levels:
+    description: 'The list of failure levels you want to set. Any set and found will cause this action to fail.'
+    required: true
+    # Find all possible values in the docs (README.md).
+    #
+    # The default is `COMPATIBILITY_PROBLEMS` and `INVALID_PLUGIN` for backwards compatibility. These
+    #   were the two default checks as of authoring this input feature. This may change in the future,
+    #   but a minor version bump (at a minimum) will happen if/when that occurs.
+    default: 'COMPATIBILITY_PROBLEMS INVALID_PLUGIN'
 outputs:
   verification-output-log-filename:
     description: The filename of the log file generated from the verification output. The output file contains both `stdout` and `stderr` streams.
@@ -32,3 +41,4 @@ runs:
     - ${{ inputs.verifier-version }}
     - ${{ inputs.plugin-location }}
     - ${{ inputs.ide-versions }}
+    - ${{ inputs.failure-levels }}
