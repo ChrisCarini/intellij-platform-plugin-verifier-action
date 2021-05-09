@@ -153,6 +153,7 @@ file path to a file containing the IDE and versions. Below are the respective ex
 
 **Workflow File:**
 ```yaml
+- uses: actions/checkout@v2 # Your repository must be checked out in order to access the `ide_versions_file.txt` configuration file.
 - name: Verify plugin on IntelliJ Platforms
   id: verify
   uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
