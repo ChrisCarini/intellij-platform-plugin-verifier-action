@@ -139,6 +139,9 @@ if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
   echo "$INPUT_IDE_VERSIONS" | while read -r INPUT_IDE_VERSION; do
     gh_debug "                   => $INPUT_IDE_VERSION"
   done
+elif [[ $INPUT_IDE_VERSIONS != *":"* ]]; then
+  echo "Did not detect a file at the value given for ide_versions. (If you had specified a file, please make sure you ran the checkout action before running this action). Proceeding to read ide-versions directly from the input..."
+  gh_debug "If ide-versions was given as a file path, the file path should be located at $GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS"
 fi
 
 # Check if there are duplicate entries in the list of IDE_VERSIONS, if so, error out and show the user a clear message
