@@ -439,6 +439,7 @@ set +o errexit
 
 # shellcheck disable=SC2086
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
+# We use `${PIPESTATUS[0]}` here instead of `$?` as the later returns the status code for the `tee` call, and we want the status code of the `java` invocation of the verifier, which `${PIPESTATUS[0]}` provides.
 VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
 # Restore 'exit on error', as the test is over.
