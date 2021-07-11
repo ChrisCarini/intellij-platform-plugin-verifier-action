@@ -190,9 +190,9 @@ gh_debug "VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
 ##
 
 # Set the correct JAVA_HOME path for the container because this is overwritten by the setup-java action.
-# We use the docker image `openjdk:8-jdk-alpine` - https://hub.docker.com/layers/openjdk/library/openjdk/8-jdk-alpine/images/sha256-210ecd2595991799526a62a7099718b149e3bbefdb49764cc2a450048e0dd4c0?context=explore
-#  and pull the `JAVA_HOME` property from it's image (ie, its definition has `ENV JAVA_HOME=/usr/lib/jvm/java-1.8-openjdk`).
-JAVA_HOME="/usr/lib/jvm/java-1.8-openjdk"
+# We use the docker image `adoptopenjdk/openjdk11:alpine-slim` - https://hub.docker.com/layers/adoptopenjdk/openjdk11/alpine-slim/images/sha256-ef65f9b755ba9d70580d3b5e4ea7f133c68cecc096171959d011b38c4728f6b2?context=explore
+#  and pull the `JAVA_HOME` property from it's image (ie, its definition has `ENV JAVA_HOME=/opt/java/openjdk`).
+JAVA_HOME="/opt/java/openjdk"
 
 # The location of the plugin
 PLUGIN_LOCATION="$GITHUB_WORKSPACE/$INPUT_PLUGIN_LOCATION"
@@ -439,7 +439,8 @@ set +o errexit
 
 # shellcheck disable=SC2086
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
-VERIFICATION_SUCCESSFUL=$?
+# We use `${PIPESTATUS[0]}` here instead of `$?` as the later returns the status code for the `tee` call, and we want the status code of the `java` invocation of the verifier, which `${PIPESTATUS[0]}` provides.
+VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
 # Restore 'exit on error', as the test is over.
 set -o errexit
