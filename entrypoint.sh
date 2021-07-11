@@ -439,7 +439,7 @@ set +o errexit
 
 # shellcheck disable=SC2086
 java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
-VERIFICATION_SUCCESSFUL=$?
+VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
 # Restore 'exit on error', as the test is over.
 set -o errexit
