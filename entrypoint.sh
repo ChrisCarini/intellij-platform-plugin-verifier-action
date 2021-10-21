@@ -166,23 +166,23 @@ if [[ "$INPUT_VERIFIER_VERSION" == "LATEST" ]]; then
     GH_LATEST_RELEASE_FILE="$HOME/intellij-plugin-verifier_latest_gh_release.json"
     curl --silent --show-error https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
     VERIFIER_VERSION=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .tag_name | sed 's/[^[:digit:].]*//g')
-    VERIFIER_DOWNLOAD_URL=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].browser_download_url)
     VERIFIER_JAR_FILENAME=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].name)
+    VERIFIER_DOWNLOAD_URL=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].browser_download_url)
 else
     gh_debug "Using verifier version [$INPUT_VERIFIER_VERSION]..."
 
     VERIFIER_VERSION=${INPUT_VERIFIER_VERSION}
-    VERIFIER_DOWNLOAD_URL="https://dl.bintray.com/jetbrains/intellij-plugin-service/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
     # The filename of the `verifier-cli-*-all.jar` file
     VERIFIER_JAR_FILENAME="verifier-cli-$VERIFIER_VERSION-all.jar"
+    VERIFIER_DOWNLOAD_URL="https://dl.bintray.com/jetbrains/intellij-plugin-service/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
 fi
 
 # The full path of the `verifier-cli-*-all.jar` file
 VERIFIER_JAR_LOCATION="$HOME/$VERIFIER_JAR_FILENAME"
 
 gh_debug "VERIFIER_VERSION => $VERIFIER_VERSION"
-gh_debug "VERIFIER_DOWNLOAD_URL => $VERIFIER_DOWNLOAD_URL"
 gh_debug "VERIFIER_JAR_FILENAME => $VERIFIER_JAR_FILENAME"
+gh_debug "VERIFIER_DOWNLOAD_URL => $VERIFIER_DOWNLOAD_URL"
 gh_debug "VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
 
 ##
