@@ -15,24 +15,28 @@ For general contributions, please open an issue on GitHub using one of the below
     2. **version tag:** we follow the format `v<version>` (ie, `v1.0.1`)
     3. **target:** Likely targeting the `master` branch, but possible a different commit.
     4. **release title:** `Release v<version>` (ie, `Release v1.0.1`)
-    5. **description:**
-   ```markdown
-   <SHORT_DESCRIPTION_ONE_OR_TWO_SENTENCES> 
+    5. **description:** Click the `Auto-generate release notes` - it makes life easier.
+       <details><summary>Previously, we used the below template</summary>
 
-   ### Added
+         ```markdown
+         <SHORT_DESCRIPTION_ONE_OR_TWO_SENTENCES> 
 
-   1. N/A
+         ### Added
 
-   ### Upgrade
+         1. N/A
 
-   1. N/A
+         ### Upgrade
 
-   ### Fixed
+         1. N/A
 
-   1. N/A
-   ```
-   (**Note:** Update the `Added`, `Upgrade`, and `Fixed` sections as needed, linking to GitHub PRs/Issues when
-   appropriate.)
+         ### Fixed
+
+         1. N/A
+         ```
+         (**Note:** Update the `Added`, `Upgrade`, and `Fixed` sections as needed, linking to GitHub PRs/Issues when
+         appropriate.)
+
+      </details>
 4. Click `Publish Release`
 5. Update the `latest` tag to the most current release:
    ```shell
