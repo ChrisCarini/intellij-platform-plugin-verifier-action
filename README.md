@@ -12,6 +12,8 @@ A minimal example of a workflow step is below:
 ```yaml
   - name: Verify Plugin on IntelliJ Platforms
     uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     with:
       ide-versions: |
         ideaIC:2019.3
@@ -46,6 +48,8 @@ A minimal example of a workflow step is below:
           - name: Verify Plugin on IntelliJ Platforms
             id: verify
             uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             with:
               ide-versions: |
                 ideaIC:2019.3
@@ -60,6 +64,24 @@ A minimal example of a workflow step is below:
               echo "The verifier log file [${{steps.verify.outputs.verification-output-log-filename}}] contents : " ;
               cat ${{steps.verify.outputs.verification-output-log-filename}}
     ```
+
+### GitHub Token Authentication
+
+In order to
+prevent [GitHub Rate limiting](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting),
+setting the `GITHUB_TOKEN` environment variable is **highly** encouraged.
+
+_**Without**_ the `GITHUB_TOKEN` set, the requests are considered 'unauthenticated requests' by the GitHub API, and are
+subject to 60 requests per hour for the originating IP
+address. [GitHub-hosted runners are hosted in Azure, and have the same IP address ranges as Azure datacenters.](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#ip-addresses)
+As a side effect of this, if the particular IP address of the GitHub-runner executing your GitHub Workflow has made 60
+requests per hour, the API call to resolve the latest version of the `intellij-plugin-verifier` will fail, and this
+action will not complete successfully.
+
+_**With**_ the `GITHUB_TOKEN`
+set, [each repository using this GitHub action will be allowed 1,000 requests per hour](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting)
+(which is needed to resolve the latest version of the `intellij-plugin-verifier`). This should be ample for most
+repositories.
 
 ## Options
 
@@ -77,6 +99,8 @@ An example using all the available options is below:
   - name: Verify Plugin on IntelliJ Platforms
     id: verify
     uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     with:
       verifier-version: '1.230'
       plugin-location: 'build/distributions/sample-intellij-plugin-*.zip'
@@ -157,6 +181,8 @@ file path to a file containing the IDE and versions. Below are the respective ex
 - name: Verify plugin on IntelliJ Platforms
   id: verify
   uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   with:
     ide-versions: .github/workflows/ide_versions_file.txt
 ```
@@ -208,6 +234,8 @@ In the below example, we use set the `id` to `verify` - this example will print 
       - name: Verify Plugin on IntelliJ Platforms
         id: verify
         uses: ChrisCarini/intellij-platform-plugin-verifier-action@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           ide-versions: |
             ideaIC:2019.3
@@ -219,7 +247,6 @@ In the below example, we use set the `id` to `verify` - this example will print 
 ```
 
 (**Note:** The file contents will include both `stdout` and `stderr` output from the plugin verification CLI.)
-
 
 # Examples
 
