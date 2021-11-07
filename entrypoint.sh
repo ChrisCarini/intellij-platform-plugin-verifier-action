@@ -181,7 +181,7 @@ else
     VERIFIER_VERSION=${INPUT_VERIFIER_VERSION}
     # The filename of the `verifier-cli-*-all.jar` file
     VERIFIER_JAR_FILENAME="verifier-cli-$VERIFIER_VERSION-all.jar"
-    VERIFIER_DOWNLOAD_URL="https://dl.bintray.com/jetbrains/intellij-plugin-service/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
+    VERIFIER_DOWNLOAD_URL="https://packages.jetbrains.team/maven/p/intellij-plugin-verifier/intellij-plugin-verifier/org/jetbrains/intellij/plugins/verifier-cli/$INPUT_VERIFIER_VERSION/$VERIFIER_JAR_FILENAME"
 fi
 
 # The full path of the `verifier-cli-*-all.jar` file
