@@ -102,7 +102,7 @@ An example using all the available options is below:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     with:
-      verifier-version: '1.230'
+      verifier-version: '1.255'
       plugin-location: 'build/distributions/sample-intellij-plugin-*.zip'
       ide-versions: |
         ideaIC:LATEST-EAP-SNAPSHOT
@@ -115,6 +115,16 @@ An example using all the available options is below:
 ### `verifier-version`
 
 This optional input allows users to pin a specific version of `intellij-plugin-verifier` to be used during validation.
+
+**WARNING:** Due to the deprecation fo Bintray services on 2021-05-01, JetBrains moved the verifier artifacts to their own
+Maven repository (
+See [`intellij-plugin-verifier` version `1.255` release notes](https://github.com/JetBrains/intellij-plugin-verifier/releases/tag/v1.255)
+for details.). If you wish to specify a `verifier-version` in this GitHub Action, please ensure you are using **both**:
+1) `intellij-plugin-verifier` version `1.255` or later
+
+    **AND**
+
+2) `intellij-platform-plugin-verifier-action` version `2.0.0` or later
 
 ### `plugin-location`
 
