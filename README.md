@@ -138,7 +138,8 @@ This required input sets which IDEs and versions the plugins will be validated a
 
 You can identify the value for `<ide>` and `<version>` as follows.
 
-1) Navigate to the [IntelliJ Releases Repository](https://www.jetbrains.com/intellij-repository/releases/)
+1) Navigate to the [IntelliJ 'Releases' Repository](https://www.jetbrains.com/intellij-repository/releases/)
+   - **Note:** If you wish to find a snapshot of an IDE, please use the [IntelliJ 'Snapshots' Repository](https://www.jetbrains.com/intellij-repository/snapshots/).
 1) Find the IDE and version you wish to use.
 1) Copy the URL for the `.zip`.
 1) Take **only** the `.zip` filename from the URL; example below:

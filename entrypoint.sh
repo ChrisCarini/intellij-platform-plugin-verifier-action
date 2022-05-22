@@ -223,6 +223,7 @@ release_type_for() {
     echo "snapshots"
     return
     ;;
+  # Per a JetBrains Platform Slack thread in #general, response from Jakub C. -> "Nightly channel isn't available publicly."
   *-SNAPSHOT)
     echo "nightly"
     return
