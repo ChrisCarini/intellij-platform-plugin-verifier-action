@@ -455,7 +455,7 @@ set -o errexit
 
 echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
 
-echo "::set-output name=verification-output-log-filename::$VERIFICATION_OUTPUT_LOG"
+echo "verification-output-log-filename=$VERIFICATION_OUTPUT_LOG" >> $GITHUB_OUTPUT
 
 error_wall() {
   echo "::error::=============================================="
