@@ -1,10 +1,10 @@
-# eclipse-temurin image with Java 11 JDK installed on an Alpine Linux base image.
+# eclipse-temurin image with Java 17 JDK installed on an Alpine Linux base image.
 # We want an Alpine Linux base image to keep the overall image size small.
-# We want a Java 11 JDK image as the verifier CLI needs a JDK (as opposed to a JRE).
+# We want a Java 17 JDK image as the verifier CLI needs a JDK (as opposed to a JRE).
 #
 # Ref: https://hub.docker.com/_/eclipse-temurin
 # Ref: https://hub.docker.com/layers/library/eclipse-temurin/11-jdk-alpine/images/sha256-38cd0ba262dad90d8ba61e6dbc6328bf50043a62c5f9b4e6108d7f5f295c2ec5?context=explore
-FROM eclipse-temurin:11-jdk-alpine
+FROM eclipse-temurin:17-jdk-alpine
 
 # We prefer bash for our script, so let's install that
 RUN apk --no-cache add bash
