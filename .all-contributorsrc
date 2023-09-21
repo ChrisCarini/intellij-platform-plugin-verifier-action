@@ -55,6 +55,17 @@
         "infra",
         "maintenance"
       ]
+    },
+    {
+      "login": "YannCebron",
+      "name": "Yann Cébron",
+      "avatar_url": "https://avatars.githubusercontent.com/u/570887?v=4",
+      "profile": "https://www.yanncebron.com/",
+      "contributions": [
+        "bug",
+        "ideas",
+        "maintenance"
+      ]
     }
   ]
 }
