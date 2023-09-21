@@ -289,6 +289,9 @@ Contributions welcomed! Feel free to open a PR, or issue.
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/serejke"><img src="https://avatars.githubusercontent.com/u/6849689?v=4?s=100" width="100px;" alt="Sergei Patrikeev"/><br /><sub><b>Sergei Patrikeev</b></sub></a><br /><a href="#infra-serejke" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-serejke" title="Maintenance">🚧</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://chrzanow.ski"><img src="https://avatars.githubusercontent.com/u/108333?v=4?s=100" width="100px;" alt="Jakub Chrzanowski"/><br /><sub><b>Jakub Chrzanowski</b></sub></a><br /><a href="#ideas-hsz" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-hsz" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-hsz" title="Maintenance">🚧</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://dwojciechowski.com/"><img src="https://avatars.githubusercontent.com/u/18571662?v=4?s=100" width="100px;" alt="Dominik Wojciechowski"/><br /><sub><b>Dominik Wojciechowski</b></sub></a><br /><a href="#ideas-d-wojciechowski" title="Ideas, Planning, & Feedback">🤔</a></td>
+    </tr>
   </tbody>
 </table>
 
