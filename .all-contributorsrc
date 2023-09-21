@@ -105,6 +105,16 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "halirutan",
+      "name": "Patrick Scheibe",
+      "avatar_url": "https://avatars.githubusercontent.com/u/511683?v=4",
+      "profile": "http://www.halirutan.de",
+      "contributions": [
+        "bug",
+        "ideas"
+      ]
     }
   ]
 }
