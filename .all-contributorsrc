@@ -117,6 +117,15 @@
         "bug",
         "ideas"
       ]
+    },
+    {
+      "login": "Unthrottled",
+      "name": "Alex Simons",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15972415?v=4",
+      "profile": "https://unthrottled.io",
+      "contributions": [
+        "bug"
+      ]
     }
   ]
 }
