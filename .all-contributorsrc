@@ -68,6 +68,16 @@
       ]
     },
     {
+      "login": "serejke",
+      "name": "Sergei Patrikeev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6849689?v=4",
+      "profile": "https://github.com/serejke",
+      "contributions": [
+        "infra",
+        "maintenance"
+      ]
+    },
+    {
       "login": "hsz",
       "name": "Jakub Chrzanowski",
       "avatar_url": "https://avatars.githubusercontent.com/u/108333?v=4",
