@@ -43,6 +43,18 @@
         "bug",
         "code"
       ]
+    },
+    {
+      "login": "sadv1r",
+      "name": "Dmitry",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5000487?v=4",
+      "profile": "https://github.com/sadv1r",
+      "contributions": [
+        "bug",
+        "code",
+        "infra",
+        "maintenance"
+      ]
     }
   ]
 }
