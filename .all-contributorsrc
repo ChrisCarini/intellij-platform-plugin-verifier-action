@@ -76,6 +76,17 @@
         "infra",
         "maintenance"
       ]
+    },
+    {
+      "login": "hsz",
+      "name": "Jakub Chrzanowski",
+      "avatar_url": "https://avatars.githubusercontent.com/u/108333?v=4",
+      "profile": "https://chrzanow.ski",
+      "contributions": [
+        "ideas",
+        "infra",
+        "maintenance"
+      ]
     }
   ]
 }
