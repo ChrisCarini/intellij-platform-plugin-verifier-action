@@ -57,7 +57,8 @@
         "bug",
         "code",
         "infra",
-        "maintenance"
+        "maintenance",
+        "userTesting"
       ]
     },
     {
