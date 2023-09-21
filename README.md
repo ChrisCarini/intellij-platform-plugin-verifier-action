@@ -4,6 +4,7 @@ A [GitHub Action](https://help.github.com/en/actions) for executing the [JetBrai
 [![GitHub Marketplace](https://img.shields.io/github/v/release/ChrisCarini/intellij-platform-plugin-verifier-action?label=Marketplace&logo=GitHub)](https://github.com/marketplace/actions/intellij-platform-plugin-verifier)
 [![GitHub Marketplace](https://img.shields.io/github/contributors/ChrisCarini/intellij-platform-plugin-verifier-action?label=Contributors&logo=GitHub)](https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/graphs/contributors)
 [![GitHub Marketplace](https://img.shields.io/github/release-date/ChrisCarini/intellij-platform-plugin-verifier-action?label=Last%20Release&logo=GitHub)](https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/releases)
+[![All Contributors](https://img.shields.io/github/all-contributors/ChrisCarini/intellij-platform-plugin-verifier-action?color=ee8449&style=flat-square)](#contributors)
 
 # Usage
 Add the action to your [GitHub Action Workflow file](https://help.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#creating-a-workflow-file) - the only thing you _need_ to specify are the JetBrains products & versions you wish to run against.
@@ -271,6 +272,17 @@ As examples of using this plugin you can check out following projects:
 # Contributing
 
 Contributions welcomed! Feel free to open a PR, or issue.
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## Debugging
 This action has [GitHub Actions Debug Logging](https://help.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-step-debug-logging).
