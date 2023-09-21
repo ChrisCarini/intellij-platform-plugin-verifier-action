@@ -129,6 +129,16 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "glex85",
+      "name": "glex85",
+      "avatar_url": "https://avatars.githubusercontent.com/u/54181288?v=4",
+      "profile": "https://github.com/glex85",
+      "contributions": [
+        "bug",
+        "userTesting"
+      ]
     }
   ]
 }
