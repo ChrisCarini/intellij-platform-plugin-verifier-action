@@ -293,6 +293,7 @@ Contributions welcomed! Feel free to open a PR, or issue.
       <td align="center" valign="top" width="14.28%"><a href="https://dwojciechowski.com/"><img src="https://avatars.githubusercontent.com/u/18571662?v=4?s=100" width="100px;" alt="Dominik Wojciechowski"/><br /><sub><b>Dominik Wojciechowski</b></sub></a><br /><a href="#ideas-d-wojciechowski" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/filiphr"><img src="https://avatars.githubusercontent.com/u/6012094?v=4?s=100" width="100px;" alt="Filip Hrisafov"/><br /><sub><b>Filip Hrisafov</b></sub></a><br /><a href="#bug-filiphr" title="Bug reports">🐛</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://www.halirutan.de"><img src="https://avatars.githubusercontent.com/u/511683?v=4?s=100" width="100px;" alt="Patrick Scheibe"/><br /><sub><b>Patrick Scheibe</b></sub></a><br /><a href="#bug-halirutan" title="Bug reports">🐛</a> <a href="#ideas-halirutan" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://unthrottled.io"><img src="https://avatars.githubusercontent.com/u/15972415?v=4?s=100" width="100px;" alt="Alex Simons"/><br /><sub><b>Alex Simons</b></sub></a><br /><a href="#bug-Unthrottled" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>
