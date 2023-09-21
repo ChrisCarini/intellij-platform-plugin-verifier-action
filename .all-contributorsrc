@@ -96,6 +96,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "filiphr",
+      "name": "Filip Hrisafov",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6012094?v=4",
+      "profile": "https://github.com/filiphr",
+      "contributions": [
+        "bug"
+      ]
     }
   ]
 }
