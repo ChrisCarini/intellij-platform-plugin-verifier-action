@@ -148,6 +148,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "le-yams",
+      "name": "Yann",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5181744?v=4",
+      "profile": "https://github.com/le-yams",
+      "contributions": [
+        "bug"
+      ]
     }
   ]
 }
