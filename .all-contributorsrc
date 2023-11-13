@@ -148,6 +148,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "case",
+      "name": "Eric Case",
+      "avatar_url": "https://avatars.githubusercontent.com/u/20105?v=4",
+      "profile": "https://vedana.net/",
+      "contributions": [
+        "bug"
+      ]
     }
   ]
 }
