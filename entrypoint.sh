@@ -118,6 +118,20 @@ INPUT_IDE_VERSIONS="$3"
 # failure-levels: ['COMPATIBILITY_PROBLEMS', 'INVALID_PLUGIN']
 FAILURE_LEVELS="$4"
 
+# the content-type headers returned by the platform download calls
+PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed"
+
+# verify the specified content-type is one of the defined accepted content-types
+function is_valid_platform_response_content_type() {
+  local response_content_type=$1
+  for valid_content_type in $PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES; do
+    if [[ "$response_content_type" = "$valid_content_type" ]]; then
+        return 0
+    fi
+  done
+  return 1
+}
+
 echo "::group::Initializing..."
 
 gh_debug "INPUT_VERIFIER_VERSION => $INPUT_VERIFIER_VERSION"
@@ -320,23 +334,23 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
 
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
-  CURL_RESP=$(curl -L --silent --show-error -w 'HTTP/%{http_code} - content-type: %{content_type}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
+  
+  CURL_RESP=$(curl -L --silent --show-error -w '%{json}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
+  http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
+  content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
 
   gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
-  # Turn off 'exit on error'; if we error out when testing the response code,
-  # we want to first print a friendly message to the user and then exit.
-  set +o errexit
-  echo "$CURL_RESP" | grep "HTTP/200 - content-type: application/octet-stream"
-  if [[ $? -eq 0 ]]; then
+
+  if [ "$http_code" = "200" ] && is_valid_platform_response_content_type "${content_type}"; then
     gh_debug "Download of [$DOWNLOAD_URL] to [$ZIP_FILE_PATH] was successful."
   else
     read -r -d '' message <<EOF
 ::error::=======================================================================================
 ::error::It appears the download of $DOWNLOAD_URL did not contain the following:
 ::error::    - status: 200
-::error::    - content-type: application/octet-stream
+::error::    - content-type: one of ${PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES}
 ::error::
-::error::Actual response: $CURL_RESP
+::error::Actual response: HTTP/${http_code} - content-type: ${content_type}
 ::error::
 ::error::This can happen if $IDE_VERSION is not a valid IDE / version. If you believe it is a
 ::error::valid ide/version, please open an issue on GitHub:
