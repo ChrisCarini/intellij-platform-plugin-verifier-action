@@ -296,7 +296,7 @@ Contributions welcomed! Feel free to open a PR, or issue.
       <td align="center" valign="top" width="14.28%"><a href="https://unthrottled.io"><img src="https://avatars.githubusercontent.com/u/15972415?v=4?s=100" width="100px;" alt="Alex Simons"/><br /><sub><b>Alex Simons</b></sub></a><br /><a href="#bug-Unthrottled" title="Bug reports">🐛</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/glex85"><img src="https://avatars.githubusercontent.com/u/54181288?v=4?s=100" width="100px;" alt="glex85"/><br /><sub><b>glex85</b></sub></a><br /><a href="#bug-glex85" title="Bug reports">🐛</a> <a href="#userTesting-glex85" title="User Testing">📓</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/etanshaul"><img src="https://avatars.githubusercontent.com/u/1735744?v=4?s=100" width="100px;" alt="Etan Shaul"/><br /><sub><b>Etan Shaul</b></sub></a><br /><a href="#ideas-etanshaul" title="Ideas, Planning, & Feedback">🤔</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/le-yams"><img src="https://avatars.githubusercontent.com/u/5181744?v=4?s=100" width="100px;" alt="Yann"/><br /><sub><b>Yann</b></sub></a><br /><a href="#bug-le-yams" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/le-yams"><img src="https://avatars.githubusercontent.com/u/5181744?v=4?s=100" width="100px;" alt="Yann"/><br /><sub><b>Yann</b></sub></a><br /><a href="#bug-le-yams" title="Bug reports">🐛</a> <a href="#code-le-yams" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
