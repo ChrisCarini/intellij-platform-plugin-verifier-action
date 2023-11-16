@@ -336,8 +336,8 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
   
   CURL_RESP=$(curl -L --silent --show-error -w '%{json}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
-  http_code==$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
-  content_type==$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
+  http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
+  content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
 
   gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
 
