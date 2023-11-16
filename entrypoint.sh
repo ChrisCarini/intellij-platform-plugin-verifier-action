@@ -341,7 +341,7 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
 
-  if [ "$http_status" -eq 200 ] && is_valid_platform_response_content_type "${content_type}"; then
+  if [ "$http_code" -eq 200 ] && is_valid_platform_response_content_type "${content_type}"; then
     gh_debug "Download of [$DOWNLOAD_URL] to [$ZIP_FILE_PATH] was successful."
   else
     read -r -d '' message <<EOF
