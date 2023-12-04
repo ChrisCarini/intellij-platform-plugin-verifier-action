@@ -178,13 +178,21 @@ fi
 if [[ "$INPUT_VERIFIER_VERSION" == "LATEST" ]]; then
     gh_debug "LATEST verifier version found, resolving version..."
     GH_LATEST_RELEASE_FILE="$HOME/intellij-plugin-verifier_latest_gh_release.json"
-    gh_debug "IS GITHUB_TOKEN SET? -> $( [[ -z "${GITHUB_TOKEN-}" ]] && echo "NO" || echo "YES" )"
-    if [[ -z "${GITHUB_TOKEN+x}" ]] ; then
-        curl --silent --show-error https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
-        curl https://api.github.com/rate_limit | gh_debug
-    else
-        gh api repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
-        gh api rate_limit | gh_debug
+    function downloadVerifierLatestReleaseJson() {
+      gh_debug "IS GITHUB_TOKEN SET? -> $( [[ -z "${GITHUB_TOKEN-}" ]] && echo "NO" || echo "YES" )"
+      if [[ -z "${GITHUB_TOKEN+x}" ]] ; then
+          curl --silent --show-error https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
+          curl https://api.github.com/rate_limit | gh_debug
+      else
+          gh api repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
+          gh api rate_limit | gh_debug
+      fi
+      cat "$GH_LATEST_RELEASE_FILE" | gh_debug
+    }
+    downloadVerifierLatestReleaseJson
+    if [ ! -s "$GH_LATEST_RELEASE_FILE" ]; then
+      echo "$GH_LATEST_RELEASE_FILE appears to be empty. Retrying."
+      downloadVerifierLatestReleaseJson
     fi
     VERIFIER_VERSION=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .tag_name | sed 's/[^[:digit:].]*//g')
     VERIFIER_JAR_FILENAME=$(cat "$GH_LATEST_RELEASE_FILE" | jq -r .assets[].name)
@@ -334,7 +342,7 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
 
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
-  
+
   CURL_RESP=$(curl -L --silent --show-error -w '%{json}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
   http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
   content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
