@@ -4,6 +4,7 @@ A [GitHub Action](https://help.github.com/en/actions) for executing the [JetBrai
 [![GitHub Marketplace](https://img.shields.io/github/v/release/ChrisCarini/intellij-platform-plugin-verifier-action?label=Marketplace&logo=GitHub)](https://github.com/marketplace/actions/intellij-platform-plugin-verifier)
 [![GitHub Marketplace](https://img.shields.io/github/contributors/ChrisCarini/intellij-platform-plugin-verifier-action?label=Contributors&logo=GitHub)](https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/graphs/contributors)
 [![GitHub Marketplace](https://img.shields.io/github/release-date/ChrisCarini/intellij-platform-plugin-verifier-action?label=Last%20Release&logo=GitHub)](https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/releases)
+[![All Contributors](https://img.shields.io/github/all-contributors/ChrisCarini/intellij-platform-plugin-verifier-action?color=ee8449&style=flat-square)](#contributors)
 
 # Usage
 Add the action to your [GitHub Action Workflow file](https://help.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#creating-a-workflow-file) - the only thing you _need_ to specify are the JetBrains products & versions you wish to run against.
@@ -138,7 +139,8 @@ This required input sets which IDEs and versions the plugins will be validated a
 
 You can identify the value for `<ide>` and `<version>` as follows.
 
-1) Navigate to the [IntelliJ Releases Repository](https://www.jetbrains.com/intellij-repository/releases/)
+1) Navigate to the [IntelliJ 'Releases' Repository](https://www.jetbrains.com/intellij-repository/releases/)
+   - **Note:** If you wish to find a snapshot of an IDE, please use the [IntelliJ 'Snapshots' Repository](https://www.jetbrains.com/intellij-repository/snapshots/).
 1) Find the IDE and version you wish to use.
 1) Copy the URL for the `.zip`.
 1) Take **only** the `.zip` filename from the URL; example below:
@@ -270,6 +272,39 @@ As examples of using this plugin you can check out following projects:
 # Contributing
 
 Contributions welcomed! Feel free to open a PR, or issue.
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ChrisCarini"><img src="https://avatars.githubusercontent.com/u/6374067?v=4?s=100" width="100px;" alt="Chris Carini"/><br /><sub><b>Chris Carini</b></sub></a><br /><a href="#bug-ChrisCarini" title="Bug reports">🐛</a> <a href="#code-ChrisCarini" title="Code">💻</a> <a href="#doc-ChrisCarini" title="Documentation">📖</a> <a href="#example-ChrisCarini" title="Examples">💡</a> <a href="#ideas-ChrisCarini" title="Ideas, Planning, & Feedback">🤔</a> <a href="#maintenance-ChrisCarini" title="Maintenance">🚧</a> <a href="#question-ChrisCarini" title="Answering Questions">💬</a> <a href="#review-ChrisCarini" title="Reviewed Pull Requests">👀</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/peterlin741"><img src="https://avatars.githubusercontent.com/u/58699538?v=4?s=100" width="100px;" alt="Peter Lin"/><br /><sub><b>Peter Lin</b></sub></a><br /><a href="#bug-peterlin741" title="Bug reports">🐛</a> <a href="#code-peterlin741" title="Code">💻</a> <a href="#ideas-peterlin741" title="Ideas, Planning, & Feedback">🤔</a> <a href="#userTesting-peterlin741" title="User Testing">📓</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/takanuva15"><img src="https://avatars.githubusercontent.com/u/6986426?v=4?s=100" width="100px;" alt="takanuva15"/><br /><sub><b>takanuva15</b></sub></a><br /><a href="#bug-takanuva15" title="Bug reports">🐛</a> <a href="#code-takanuva15" title="Code">💻</a> <a href="#infra-takanuva15" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-takanuva15" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sadv1r"><img src="https://avatars.githubusercontent.com/u/5000487?v=4?s=100" width="100px;" alt="Dmitry"/><br /><sub><b>Dmitry</b></sub></a><br /><a href="#bug-sadv1r" title="Bug reports">🐛</a> <a href="#code-sadv1r" title="Code">💻</a> <a href="#infra-sadv1r" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-sadv1r" title="Maintenance">🚧</a> <a href="#userTesting-sadv1r" title="User Testing">📓</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://www.yanncebron.com/"><img src="https://avatars.githubusercontent.com/u/570887?v=4?s=100" width="100px;" alt="Yann Cébron"/><br /><sub><b>Yann Cébron</b></sub></a><br /><a href="#bug-YannCebron" title="Bug reports">🐛</a> <a href="#ideas-YannCebron" title="Ideas, Planning, & Feedback">🤔</a> <a href="#maintenance-YannCebron" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/serejke"><img src="https://avatars.githubusercontent.com/u/6849689?v=4?s=100" width="100px;" alt="Sergei Patrikeev"/><br /><sub><b>Sergei Patrikeev</b></sub></a><br /><a href="#infra-serejke" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-serejke" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://chrzanow.ski"><img src="https://avatars.githubusercontent.com/u/108333?v=4?s=100" width="100px;" alt="Jakub Chrzanowski"/><br /><sub><b>Jakub Chrzanowski</b></sub></a><br /><a href="#ideas-hsz" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-hsz" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-hsz" title="Maintenance">🚧</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://dwojciechowski.com/"><img src="https://avatars.githubusercontent.com/u/18571662?v=4?s=100" width="100px;" alt="Dominik Wojciechowski"/><br /><sub><b>Dominik Wojciechowski</b></sub></a><br /><a href="#ideas-d-wojciechowski" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/filiphr"><img src="https://avatars.githubusercontent.com/u/6012094?v=4?s=100" width="100px;" alt="Filip Hrisafov"/><br /><sub><b>Filip Hrisafov</b></sub></a><br /><a href="#bug-filiphr" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://www.halirutan.de"><img src="https://avatars.githubusercontent.com/u/511683?v=4?s=100" width="100px;" alt="Patrick Scheibe"/><br /><sub><b>Patrick Scheibe</b></sub></a><br /><a href="#bug-halirutan" title="Bug reports">🐛</a> <a href="#ideas-halirutan" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://unthrottled.io"><img src="https://avatars.githubusercontent.com/u/15972415?v=4?s=100" width="100px;" alt="Alex Simons"/><br /><sub><b>Alex Simons</b></sub></a><br /><a href="#bug-Unthrottled" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/glex85"><img src="https://avatars.githubusercontent.com/u/54181288?v=4?s=100" width="100px;" alt="glex85"/><br /><sub><b>glex85</b></sub></a><br /><a href="#bug-glex85" title="Bug reports">🐛</a> <a href="#userTesting-glex85" title="User Testing">📓</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/etanshaul"><img src="https://avatars.githubusercontent.com/u/1735744?v=4?s=100" width="100px;" alt="Etan Shaul"/><br /><sub><b>Etan Shaul</b></sub></a><br /><a href="#ideas-etanshaul" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/le-yams"><img src="https://avatars.githubusercontent.com/u/5181744?v=4?s=100" width="100px;" alt="Yann"/><br /><sub><b>Yann</b></sub></a><br /><a href="#bug-le-yams" title="Bug reports">🐛</a> <a href="#code-le-yams" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## Debugging
 This action has [GitHub Actions Debug Logging](https://help.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-step-debug-logging).
