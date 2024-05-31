@@ -44,6 +44,9 @@ exit_trap() {
     64) echo "::error::Exiting due to a known, handled exception - duplicate ide-version entries found." ;;
     65) echo "::error::Exiting due to a known, handled exception - invalid download headers when downloading an IDE." ;;
     66) echo "::error::Exiting due to a known, handled exception - invalid zip file downloaded." ;;
+    69) echo "::error::Exiting due to a known, handled exception - failed to get latest release info for JetBrains/intellij-plugin-verifier." ;;
+    70) echo "::error::Exiting due to a known, handled exception - failed to get GitHub rate limit information." ;;
+    71) echo "::error::Exiting due to a known, handled exception - failed to download plugin verifier." ;;
     67) echo "::error::Exiting due to a known, handled, plugin validation failure." ;;
     68) echo "::error::Exiting due to an unhandled plugin validation failure." ;;
 
@@ -125,18 +128,78 @@ FAILURE_LEVELS="$4"
 # mute-plugin-problems: 'ForbiddenPluginIdPrefix,TemplateWordInPluginId,TemplateWordInPluginName'
 INPUT_MUTE_PLUGIN_PROBLEMS="$5"
 
-# the content-type headers returned by the platform download calls
-PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed"
-
 # verify the specified content-type is one of the defined accepted content-types
-function is_valid_platform_response_content_type() {
-  local response_content_type=$1
-  for valid_content_type in $PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES; do
+function is_valid_response_content_type() {
+  # Remove everything after the first semicolon (;) - e.g. "application/json; charset=utf-8" -> "application/json"
+  local response_content_type="${1%%;*}"
+  local accepted_content_types=$2
+  for valid_content_type in $accepted_content_types; do
     if [[ "$response_content_type" = "$valid_content_type" ]]; then
         return 0
     fi
   done
   return 1
+}
+
+function curl_with_retry() {
+  OUTPUT_FILE=$1
+  URL=$2
+  ACCEPTED_CONTENT_TYPES=$3
+  ERROR_CODE=$4
+  ADDITIONAL_ARGS="${*:5}" # Capture all arguments starting from the second one as an array
+
+  local retries=3
+  local delay=3
+  local attempt=0
+  local success=false
+
+  while (( attempt < retries )); do
+    (( attempt=attempt+1 ))
+    echo "[$attempt of $retries] Downloading [${URL}] to [${OUTPUT_FILE}]..."
+
+    CURL_RESP=$(curl --silent --show-error -L --output "${OUTPUT_FILE}" -w '%{json}' $ADDITIONAL_ARGS "${URL}")
+    curl_success=$?
+    http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
+    content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
+
+    gh_debug "[${URL}] curl_success:           $curl_success"
+    gh_debug "[${URL}] http_code:              $http_code"
+    gh_debug "[${URL}] content_type:           $content_type"
+    gh_debug "[${URL}] ACCEPTED_CONTENT_TYPES: $ACCEPTED_CONTENT_TYPES"
+    if [ $curl_success -eq 0 ] && [ "$http_code" = "200" ] && is_valid_response_content_type "${content_type}" "${ACCEPTED_CONTENT_TYPES}"; then
+      echo "[$attempt of $retries] Successfully downloaded [${URL}] to [${OUTPUT_FILE}]."
+      success=true
+      break
+    fi
+
+    echo "[$attempt of $retries] Failed downloading [${URL}] to [${OUTPUT_FILE}]. Retrying in $delay seconds..."
+    sleep $delay
+  done
+
+  if [ "$success" = false ]; then
+    echo "All $retries attempts failed!"
+    read -r -d '' message <<EOF
+::error::=======================================================================================
+::error::It appears the download of $URL did not contain the following:
+::error::    - curl return code: 0
+::error::    - http status code: 200
+::error::    - http content-type: one of ${ACCEPTED_CONTENT_TYPES}
+::error::
+::error::Actual response:
+::error::   - curl response code: $curl_success
+::error::   - HTTP/${http_code} - content-type: ${content_type}
+::error::
+::error::This can happen if $IDE_VERSION is not a valid IDE / version. If you believe it is a
+::error::valid ide/version, please open an issue on GitHub:
+::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::error::
+::error::As a precaution, we are failing this execution.
+::error::=======================================================================================
+EOF
+    # Print the message once in this log group, and then save for after so it's more visible to the user.
+    echo "$message" ; echo "$message" >> $post_loop_messages
+    exit $ERROR_CODE
+  fi
 }
 
 echo "::group::Initializing..."
@@ -189,8 +252,8 @@ if [[ "$INPUT_VERIFIER_VERSION" == "LATEST" ]]; then
     function downloadVerifierLatestReleaseJson() {
       gh_debug "IS GITHUB_TOKEN SET? -> $( [[ -z "${GITHUB_TOKEN-}" ]] && echo "NO" || echo "YES" )"
       if [[ -z "${GITHUB_TOKEN+x}" ]] ; then
-          curl --silent --show-error https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
-          curl https://api.github.com/rate_limit | gh_debug
+          curl_with_retry "$GH_LATEST_RELEASE_FILE" https://api.github.com/repos/JetBrains/intellij-plugin-verifier/releases/latest "application/json" 69
+          curl_with_retry rate_limit.json https://api.github.com/rate_limit "application/json" 70 && cat rate_limit.json | gh_debug
       else
           gh api repos/JetBrains/intellij-plugin-verifier/releases/latest > "$GH_LATEST_RELEASE_FILE"
           gh api rate_limit | gh_debug
@@ -309,7 +372,7 @@ isFailureLevelSet () {
 ##
 
 echo "Downloading plugin verifier [version '$INPUT_VERIFIER_VERSION'] from [$VERIFIER_DOWNLOAD_URL] to [$VERIFIER_JAR_LOCATION]..."
-curl -L --silent --show-error --output "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL"
+curl_with_retry "$VERIFIER_JAR_LOCATION" "$VERIFIER_DOWNLOAD_URL" "application/octet-stream" 71
 
 echo "::endgroup::" # END "Initializing..." block
 
@@ -351,36 +414,9 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
 
-  CURL_RESP=$(curl -L --silent --show-error -w '%{json}' --output "$ZIP_FILE_PATH" "$DOWNLOAD_URL")
-  http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
-  content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
-
-  gh_debug "Checking response code and content type for the download of [$DOWNLOAD_URL] to ensure download successful..."
-
-  if [ "$http_code" = "200" ] && is_valid_platform_response_content_type "${content_type}"; then
-    gh_debug "Download of [$DOWNLOAD_URL] to [$ZIP_FILE_PATH] was successful."
-  else
-    read -r -d '' message <<EOF
-::error::=======================================================================================
-::error::It appears the download of $DOWNLOAD_URL did not contain the following:
-::error::    - status: 200
-::error::    - content-type: one of ${PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES}
-::error::
-::error::Actual response: HTTP/${http_code} - content-type: ${content_type}
-::error::
-::error::This can happen if $IDE_VERSION is not a valid IDE / version. If you believe it is a
-::error::valid ide/version, please open an issue on GitHub:
-::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
-::error::
-::error::As a precaution, we are failing this execution.
-::error::=======================================================================================
-EOF
-    # Print the message once in this log group, and then save for after so it's more visible to the user.
-    echo "$message" ; echo "$message" >> $post_loop_messages
-    exit 65 # An error has occurred - invalid download headers.
-  fi
-  # Restore 'exit on error', as the test is over.
-  set -o errexit
+  # the content-type headers returned by the platform download calls
+  PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed"
+  curl_with_retry "$ZIP_FILE_PATH" "$DOWNLOAD_URL" "$PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES" 65
 
   gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
   # Turn off 'exit on error'; if we error out when testing the zip file,
