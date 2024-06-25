@@ -31,6 +31,9 @@ inputs:
     #   were the two default checks as of authoring this input feature. This may change in the future,
     #   but a minor version bump (at a minimum) will happen if/when that occurs.
     default: 'COMPATIBILITY_PROBLEMS INVALID_PLUGIN'
+  mute-plugin-problems:
+    description: 'The comma-separated list of rules to suppress. See https://github.com/JetBrains/intellij-plugin-verifier?tab=readme-ov-file#specific-options for a list of valid values.'
+    required: false
 outputs:
   verification-output-log-filename:
     description: The filename of the log file generated from the verification output. The output file contains both `stdout` and `stderr` streams.
@@ -42,3 +45,4 @@ runs:
     - ${{ inputs.plugin-location }}
     - ${{ inputs.ide-versions }}
     - ${{ inputs.failure-levels }}
+    - ${{ inputs.mute-plugin-problems }}
