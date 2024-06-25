@@ -118,6 +118,13 @@ INPUT_IDE_VERSIONS="$3"
 # failure-levels: ['COMPATIBILITY_PROBLEMS', 'INVALID_PLUGIN']
 FAILURE_LEVELS="$4"
 
+# Found from: https://github.com/JetBrains/intellij-plugin-verifier?tab=readme-ov-file#specific-options
+#
+# Input string can be a comma separated list
+#
+# mute-plugin-problems: ['ForbiddenPluginIdPrefix', 'TemplateWordInPluginId', 'TemplateWordInPluginName']
+INPUT_MUTE_PLUGIN_PROBLEMS="$5"
+
 # the content-type headers returned by the platform download calls
 PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed"
 
@@ -144,6 +151,7 @@ gh_debug "FAILURE_LEVELS =>"
 echo "$FAILURE_LEVELS" | while read -r FAILURE_LEVEL; do
 gh_debug "               => $FAILURE_LEVEL"
 done
+gh_debug "INPUT_MUTE_PLUGIN_PROBLEMS => $INPUT_MUTE_PLUGIN_PROBLEMS"
 
 # If the user passed in a file instead of a list, pull the IDE+version combos from the file and use that instead.
 if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
@@ -419,6 +427,12 @@ done
 # any warning / error messages are not masked by the log group.
 cat $post_loop_messages
 
+MUTE_ARGS=""
+
+if [ "${INPUT_MUTE_PLUGIN_PROBLEMS}" ] ; then
+  MUTE_ARGS="-mute ${INPUT_MUTE_PLUGIN_PROBLEMS}"
+fi
+
 ##
 # Print ENVVARs for debugging.
 ##
@@ -451,10 +465,10 @@ echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIR
 VERIFICATION_OUTPUT_LOG="verification_result.log"
 echo "::group::Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
 
-gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES"
+gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS"
 
-# We don't wrap $IDE_DIRECTORIES in quotes at the end of this to allow
-# the single string of args (ie, `"a b c"`) be broken into multiple
+# We don't wrap $IDE_DIRECTORIES or $MUTE_ARGS in quotes at the end of this to
+# allow the single string of args (ie, `"a b c"`) be broken into multiple
 # arguments instead of being wrapped in quotes when passed to the command.
 #     ie, we want:
 #         cat a b c
@@ -468,7 +482,7 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 set +o errexit
 
 # shellcheck disable=SC2086
-java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
+java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
 # We use `${PIPESTATUS[0]}` here instead of `$?` as the later returns the status code for the `tee` call, and we want the status code of the `java` invocation of the verifier, which `${PIPESTATUS[0]}` provides.
 VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
