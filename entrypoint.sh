@@ -122,7 +122,7 @@ FAILURE_LEVELS="$4"
 #
 # Input string can be a comma separated list
 #
-# mute-plugin-problems: ['ForbiddenPluginIdPrefix', 'TemplateWordInPluginId', 'TemplateWordInPluginName']
+# mute-plugin-problems: 'ForbiddenPluginIdPrefix,TemplateWordInPluginId,TemplateWordInPluginName'
 INPUT_MUTE_PLUGIN_PROBLEMS="$5"
 
 # the content-type headers returned by the platform download calls
