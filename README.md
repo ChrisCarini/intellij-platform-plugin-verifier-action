@@ -233,6 +233,18 @@ This required input sets which plugin verifier failures to cause a failure in th
 the two default checks as of authoring this capability. This may change in the future, but a minor version bump (at a
 minimum) will happen should that occur.
 
+### `mute-plugin-problems`
+
+This optional input sets which plugins problems will be ignored. Multiple values can be passed in as a comma-separated string.
+
+See https://github.com/JetBrains/intellij-plugin-verifier?tab=readme-ov-file#check-plugin for more details.
+
+#### Valid options
+
+    - `ForbiddenPluginIdPrefix`
+    - `TemplateWordInPluginId`
+    - `TemplateWordInPluginName`
+
 ## Results
 The results of the execution are captured in a file for use in subsequent steps if you so choose.
 
