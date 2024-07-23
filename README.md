@@ -310,6 +310,9 @@ Contributions welcomed! Feel free to open a PR, or issue.
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/etanshaul"><img src="https://avatars.githubusercontent.com/u/1735744?v=4?s=100" width="100px;" alt="Etan Shaul"/><br /><sub><b>Etan Shaul</b></sub></a><br /><a href="#ideas-etanshaul" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/le-yams"><img src="https://avatars.githubusercontent.com/u/5181744?v=4?s=100" width="100px;" alt="Yann"/><br /><sub><b>Yann</b></sub></a><br /><a href="#bug-le-yams" title="Bug reports">🐛</a> <a href="#code-le-yams" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/drewbrokke"><img src="https://avatars.githubusercontent.com/u/6403097?v=4?s=100" width="100px;" alt="Drew Brokke"/><br /><sub><b>Drew Brokke</b></sub></a><br /><a href="#code-drewbrokke" title="Code">💻</a> <a href="#doc-drewbrokke" title="Documentation">📖</a></td>
+    </tr>
   </tbody>
 </table>
 

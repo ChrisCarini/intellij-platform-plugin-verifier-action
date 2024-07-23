@@ -158,6 +158,16 @@
         "bug",
         "code"
       ]
+    },
+    {
+      "login": "drewbrokke",
+      "name": "Drew Brokke",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6403097?v=4",
+      "profile": "https://github.com/drewbrokke",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ]
 }
