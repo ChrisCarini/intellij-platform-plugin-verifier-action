@@ -415,7 +415,7 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
 
   # the content-type headers returned by the platform download calls
-  PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed"
+  PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed application/zip"
   curl_with_retry "$ZIP_FILE_PATH" "$DOWNLOAD_URL" "$PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES" 65
 
   gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
