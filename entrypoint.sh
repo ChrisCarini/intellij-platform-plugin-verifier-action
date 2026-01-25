@@ -161,10 +161,14 @@ function curl_with_retry() {
     curl_success=$?
     http_code=$(echo "${CURL_RESP}" | jq -r '.response_code // empty')
     content_type=$(echo "${CURL_RESP}" | jq -r '.content_type // empty')
+    size_download=$(echo "${CURL_RESP}" | jq -r '.size_download // empty')
+    speed_download=$(echo "${CURL_RESP}" | jq -r '.speed_download // empty')
 
     gh_debug "[${URL}] curl_success:           $curl_success"
     gh_debug "[${URL}] http_code:              $http_code"
     gh_debug "[${URL}] content_type:           $content_type"
+    gh_debug "[${URL}] size_download:          $size_download"
+    gh_debug "[${URL}] speed_download:         $speed_download"
     gh_debug "[${URL}] ACCEPTED_CONTENT_TYPES: $ACCEPTED_CONTENT_TYPES"
     if [ $curl_success -eq 0 ] && [ "$http_code" = "200" ] && is_valid_response_content_type "${content_type}" "${ACCEPTED_CONTENT_TYPES}"; then
       echo "[$attempt of $retries] Successfully downloaded [${URL}] to [${OUTPUT_FILE}]."
