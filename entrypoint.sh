@@ -304,6 +304,9 @@ gh_debug "PLUGIN_LOCATION => $PLUGIN_LOCATION"
 # Variable to store the string of IDE tmp_ide_directories we're going to use for verification.
 IDE_DIRECTORIES=""
 
+# The location that the IDE zip files will be extracted into.
+IDE_BASE_EXTRACT_LOCATION="$HOME/ides"
+
 ##
 # Functions
 ##
@@ -367,6 +370,22 @@ isFailureLevelSet () {
   fi
 }
 
+debug_ide_base_extract_location_size () {
+  gh_debug "==================== PRINT SPACE OF [${IDE_BASE_EXTRACT_LOCATION}] ===================="
+  gh_debug "----------------------------------------------------------------------------"
+  gh_debug ""
+  gh_debug "$ df -h /"
+  gh_debug ""
+  df -h / | gh_debug
+  gh_debug "----------------------------------------------------------------------------"
+  gh_debug ""
+  gh_debug "$ du --human-readable --max-depth=1 --total ${IDE_BASE_EXTRACT_LOCATION}"
+  gh_debug ""
+  du --human-readable --max-depth=1 --total "${IDE_BASE_EXTRACT_LOCATION}" | gh_debug
+  gh_debug "----------------------------------------------------------------------------"
+  gh_debug "==================== END PRINT SPACE OF [${IDE_BASE_EXTRACT_LOCATION}] ===================="
+}
+
 ##
 # Setup
 ##
@@ -387,6 +406,8 @@ tmp_ide_directories="/tmp/ide_directories.txt"
 post_loop_messages="/tmp/post_loop_messages.txt"
 
 touch "$post_loop_messages"
+
+debug_ide_base_extract_location_size
 
 echo "Preparing all IDE versions specified..."
 echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
@@ -445,10 +466,12 @@ EOF
   # Restore 'exit on error', as the test is over.
   set -o errexit
 
-  IDE_EXTRACT_LOCATION="$HOME/ides/$IDE-$VERSION"
+  IDE_EXTRACT_LOCATION="${IDE_BASE_EXTRACT_LOCATION}/$IDE-$VERSION"
   echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
   mkdir -p "$IDE_EXTRACT_LOCATION"
   unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
+
+  debug_ide_base_extract_location_size
 
   gh_debug "Removing [$ZIP_FILE_PATH] to save storage space..."
   rm "$ZIP_FILE_PATH"
