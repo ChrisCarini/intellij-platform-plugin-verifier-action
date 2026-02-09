@@ -1,11 +1,13 @@
 #!/bin/bash
 
 ###
-# This script expects 4 input variables:
+# This script expects 6 input variables:
 #  - intellij-plugin-verifier version
 #  - relative plugin path
 #  - new-line separated IDE + version
 #  - new-line separated Failure Levels
+#  - comma-separated mute plugin problems list
+#  - colon-separated external class prefixes list
 #
 # See below for examples of these inputs.
 #
@@ -126,7 +128,10 @@ FAILURE_LEVELS="$4"
 # Input string can be a comma separated list
 #
 # mute-plugin-problems: 'ForbiddenPluginIdPrefix,TemplateWordInPluginId,TemplateWordInPluginName'
-INPUT_MUTE_PLUGIN_PROBLEMS="$5"
+INPUT_MUTE_PLUGIN_PROBLEMS="${5-}"
+
+# external-prefixes: 'org.jetbrains.jps:com.example'
+INPUT_EXTERNAL_PREFIXES="${6-}"
 
 # verify the specified content-type is one of the defined accepted content-types
 function is_valid_response_content_type() {
@@ -219,6 +224,7 @@ echo "$FAILURE_LEVELS" | while read -r FAILURE_LEVEL; do
 gh_debug "               => $FAILURE_LEVEL"
 done
 gh_debug "INPUT_MUTE_PLUGIN_PROBLEMS => $INPUT_MUTE_PLUGIN_PROBLEMS"
+gh_debug "INPUT_EXTERNAL_PREFIXES => $INPUT_EXTERNAL_PREFIXES"
 
 # If the user passed in a file instead of a list, pull the IDE+version combos from the file and use that instead.
 if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
@@ -496,6 +502,12 @@ if [ "${INPUT_MUTE_PLUGIN_PROBLEMS}" ] ; then
   MUTE_ARGS="-mute ${INPUT_MUTE_PLUGIN_PROBLEMS}"
 fi
 
+EXTERNAL_PREFIX_ARGS=""
+
+if [ "${INPUT_EXTERNAL_PREFIXES}" ] ; then
+  EXTERNAL_PREFIX_ARGS="-external-prefixes ${INPUT_EXTERNAL_PREFIXES}"
+fi
+
 ##
 # Print ENVVARs for debugging.
 ##
@@ -528,7 +540,7 @@ echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIR
 VERIFICATION_OUTPUT_LOG="verification_result.log"
 echo "::group::Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
 
-gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS"
+gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS"
 
 # We don't wrap $IDE_DIRECTORIES or $MUTE_ARGS in quotes at the end of this to
 # allow the single string of args (ie, `"a b c"`) be broken into multiple
@@ -545,7 +557,7 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 set +o errexit
 
 # shellcheck disable=SC2086
-java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
+java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
 # We use `${PIPESTATUS[0]}` here instead of `$?` as the later returns the status code for the `tee` call, and we want the status code of the `java` invocation of the verifier, which `${PIPESTATUS[0]}` provides.
 VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
