@@ -584,7 +584,7 @@ error_wall() {
 echo "::group::Running validations against output..."
 # The below if/elif blocks are taken from the `gradle-intellij-plugin`'s RunPluginVerifierTask.groovy file, where
 # the `FailureLevel` Enum is specified with the below information. A link is below for reference:
-# Link: https://github.com/JetBrains/gradle-intellij-plugin/blob/ea5eb75548af4b368f2bd981d8c2d338edb3208d/src/main/groovy/org/jetbrains/intellij/tasks/RunPluginVerifierTask.groovy#L29
+# Link: https://github.com/JetBrains/intellij-platform-gradle-plugin/blob/main/src/main/kotlin/org/jetbrains/intellij/platform/gradle/tasks/VerifyPluginTask.kt#L526-L574
 
 # COMPATIBILITY_WARNINGS("Compatibility warnings"),
 if isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "COMPATIBILITY_WARNINGS" "Compatibility warnings"; then
