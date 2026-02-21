@@ -600,6 +600,10 @@ elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "COMPATIBILITY_PROBLEMS" "Comp
 elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "DEPRECATED_API_USAGES" "Deprecated API usages"; then
   error_wall
 
+# SCHEDULED_FOR_REMOVAL_API_USAGES("scheduled for removal API"),
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "SCHEDULED_FOR_REMOVAL_API_USAGES" "scheduled for removal API"; then
+  error_wall
+
 # EXPERIMENTAL_API_USAGES("Experimental API usages"),
 elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "EXPERIMENTAL_API_USAGES" "Experimental API usages"; then
   error_wall
