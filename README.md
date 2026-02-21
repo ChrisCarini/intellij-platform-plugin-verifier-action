@@ -319,6 +319,7 @@ Contributions welcomed! Feel free to open a PR, or issue.
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/drewbrokke"><img src="https://avatars.githubusercontent.com/u/6403097?v=4?s=100" width="100px;" alt="Drew Brokke"/><br /><sub><b>Drew Brokke</b></sub></a><br /><a href="#code-drewbrokke" title="Code">💻</a> <a href="#doc-drewbrokke" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sh41"><img src="https://avatars.githubusercontent.com/u/6237786?v=4?s=100" width="100px;" alt="Steve Hall"/><br /><sub><b>Steve Hall</b></sub></a><br /><a href="#code-sh41" title="Code">💻</a> <a href="#doc-sh41" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>
