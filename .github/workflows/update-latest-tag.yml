@@ -1,0 +1,47 @@
+name: Update `latest` tag on release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-latest-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update latest tag
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tagName = 'latest';
+            const sha = context.payload.release.target_commitish === 'main'
+              ? (await github.rest.repos.getBranch({ owner, repo, branch: 'main' })).data.commit.sha
+              : context.sha;
+
+            // Try to update existing tag ref; create if it doesn't exist
+            try {
+              await github.rest.git.updateRef({
+                owner,
+                repo,
+                ref: `tags/${tagName}`,
+                sha,
+                force: true,
+              });
+              core.info(`Updated '${tagName}' tag to ${sha}`);
+            } catch (error) {
+              if (error.status === 422) {
+                await github.rest.git.createRef({
+                  owner,
+                  repo,
+                  ref: `refs/tags/${tagName}`,
+                  sha,
+                });
+                core.info(`Created '${tagName}' tag at ${sha}`);
+              } else {
+                throw error;
+              }
+            }

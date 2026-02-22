@@ -38,7 +38,12 @@ For general contributions, please open an issue on GitHub using one of the below
 
       </details>
 4. Click `Publish Release`
-5. Update the `latest` tag to the most current release:
+5. The `latest` tag is automatically updated to the release commit by the
+   [Update `latest` tag on release](/.github/workflows/update-latest-tag.yml) workflow.
+   <details><summary>Manual steps (for reference)</summary>
+
    ```shell
    git tag -d latest && git push origin :refs/tags/latest && git tag latest main && git push origin latest
    ```
+
+   </details>
