@@ -632,8 +632,10 @@ elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "MISSING_DEPENDENCIES" "Missin
 elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "INVALID_PLUGIN" "The following files specified for the verification are not valid plugins"; then
   error_wall
 
-# NOT_DYNAMIC("Plugin cannot be loaded/unloaded without IDE restart");
+# NOT_DYNAMIC("Plugin probably cannot be enabled or disabled without IDE restart");
 elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NOT_DYNAMIC" "Plugin cannot be loaded/unloaded without IDE restart"; then
+  error_wall
+elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NOT_DYNAMIC" "Plugin probably cannot be enabled or disabled without IDE restart"; then
   error_wall
 
 elif [ ${VERIFICATION_SUCCESSFUL} == 1 ]; then
