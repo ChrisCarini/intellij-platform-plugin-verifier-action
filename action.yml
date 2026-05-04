@@ -37,9 +37,17 @@ inputs:
   external-prefixes:
     description: 'Colon-separated list of external class prefixes to ignore for "No such class" errors (verifier -external-prefixes).'
     required: false
+  verification-reports-formats:
+    description: 'Comma-separated list of verification report output formats. Supported: plain, html, markdown. Prefix with - to exclude (e.g. -plain). See https://github.com/JetBrains/intellij-plugin-verifier for details.'
+    required: false
+  add-to-summary:
+    description: 'Comma-separated list of report filenames to append to the GitHub Actions Job Summary, grouped by IDE. Aliases: "markdown" (all .md files), "plain" (all .txt files). Text files >3 lines are collapsed. Leave unset to skip.'
+    required: false
 outputs:
   verification-output-log-filename:
     description: The filename of the log file generated from the verification output. The output file contains both `stdout` and `stderr` streams.
+  verification-reports-dir:
+    description: The path to the directory containing the verification report files.
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -50,3 +58,5 @@ runs:
     - ${{ inputs.failure-levels }}
     - ${{ inputs.mute-plugin-problems }}
     - ${{ inputs.external-prefixes }}
+    - ${{ inputs.verification-reports-formats }}
+    - ${{ inputs.add-to-summary }}
