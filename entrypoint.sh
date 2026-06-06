@@ -198,7 +198,8 @@ function curl_with_retry() {
 ::error::   - curl response code: $curl_success
 ::error::   - HTTP/${http_code} - content-type: ${content_type}
 ::error::
-::error::This can happen if $IDE_VERSION is not a valid IDE / version. If you believe it is a
+::error::This can happen if ${IDE_VERSION-the requested resource} is not a valid IDE / version, or if the
+::error::download endpoint could not be reached (e.g. network issues or rate limiting). If you believe it is a
 ::error::valid ide/version, please open an issue on GitHub:
 ::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
 ::error::
