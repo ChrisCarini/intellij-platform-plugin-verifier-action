@@ -96,6 +96,8 @@ This GitHub Action exposes the following input options; `ide-versions` and `fail
 | `failure-levels`  | The different failure levels to set for the verifier. | *Required* | `COMPATIBILITY_PROBLEMS INVALID_PLUGIN`|
 | `mute-plugin-problems`  | Comma-separated list of plugin problem identifiers to ignore. | *Optional* | |
 | `external-prefixes`  | Colon-separated list of external class prefixes to ignore for "No such class" errors. | *Optional* | |
+| `verification-reports-formats`  | Comma-separated list of *additional* verification report formats to enable (`html`, `markdown`). `plain` is always enabled and can not be excluded. | *Optional* | *(verifier default: `plain,html`)* |
+| `add-to-summary`  | Comma-separated list of report filenames to append to the Job Summary, grouped by IDE version. Aliases: `markdown` (all `.md` files), `plain` (all `.txt` files). | *Optional* | |
 
 An example using all the available options is below:
 ```yaml
@@ -113,6 +115,8 @@ An example using all the available options is below:
         COMPATIBILITY_PROBLEMS
         INVALID_PLUGIN
         NOT_DYNAMIC
+      verification-reports-formats: 'markdown'
+      add-to-summary: 'verification-verdict.txt,compatibility-problems.txt'
 ``` 
 
 ### `verifier-version`
@@ -252,12 +256,104 @@ See https://github.com/JetBrains/intellij-plugin-verifier?tab=readme-ov-file#che
 This optional input sets external class prefixes that should be ignored for "No such class" compatibility problems.
 Pass a colon-separated list, for example: `org.jetbrains.jps:com.example`
 
+### `verification-reports-formats`
+
+This optional input enables *additional* output formats for the verifier's reports, on top of `plain`. Supported values: `html`, `markdown`. Multiple formats are comma-separated.
+
+**`plain` is always enabled and can not be excluded or disabled.** This action determines pass/fail by reading the verifier's console output, which is what the `plain` format produces; it is not a report file. The `.txt` report files are written unconditionally, regardless of this input (only `report.html` and `report.md` are gated by it). This is distinct from the `plain` alias under `add-to-summary` below, which selects those `.txt` files for the job summary. Exclusion syntax (`-plain`, `-html`, etc.) and unrecognized values are ignored with a `::warning::`, never failed.
+
+Listing one or more formats explicitly **replaces** the verifier's default of `plain,html` (`plain` is always re-added) instead of adding to it. For example, `verification-reports-formats: 'markdown'` results in `plain,markdown`, which turns `html` off. Leave the input unset to keep the `plain,html` default.
+
+If `add-to-summary` includes `markdown` or any `.md` filename, the `markdown` format is automatically included even if not explicitly listed here.
+
+Examples:
+- *(unset)*: verifier default, `plain,html`.
+- `markdown`: `plain,markdown` (html turned off).
+- `html,markdown`: `plain,html,markdown` (everything on).
+
+### `add-to-summary`
+
+This optional input appends verification report files to the [GitHub Actions Job Summary](https://github.blog/2022-05-09-supercharging-github-actions-with-job-summaries/), grouped under IDE version headings.
+
+Provide a comma-separated list of report filenames or aliases (aliases are matched case-insensitively):
+
+| Value | Expands to |
+|-------|-----------|
+| `markdown` | All `*.md` files (rendered as raw markdown) |
+| `plain` | All `*.txt` files (always produced by the verifier, independent of the `verification-reports-formats` input) |
+| `verification-verdict.txt` | Just the verdict file |
+| `verification-verdict.txt,compatibility-problems.txt` | Multiple specific files |
+
+#### Available report filenames
+
+Per-plugin report files (in `plugins/<plugin-id>/<plugin-version>/`):
+
+| Filename | Content |
+|----------|---------|
+| `verification-verdict.txt` | One-line verification result |
+| `compatibility-warnings.txt` | Compatibility warnings |
+| `compatibility-problems.txt` | Compatibility problems |
+| `dependencies.txt` | Plugin dependency graph |
+| `deprecated-usages.txt` | Deprecated API usages |
+| `experimental-api-usages.txt` | Experimental API usages |
+| `internal-api-usages.txt` | Internal API usages |
+| `internal-api-kt-usages.txt` | Kotlin internal API usages |
+| `override-only-usages.txt` | Override-only method usages |
+| `non-extendable-api-usages.txt` | Non-extendable API usages |
+| `plugin-structure-warnings.txt` | Plugin structure warnings |
+| `telemetry.txt` | Telemetry data |
+| `invalid-plugin.txt` | Plugin structure errors (only for invalid plugins) |
+
+Per-IDE report files (in the IDE version directory):
+
+| Filename | Content |
+|----------|---------|
+| `all-ignored-problems.txt` | All problems that were muted/ignored |
+| `all-ignored-plugins.txt` | All plugins that were ignored |
+| `report.md` | Full markdown report (only when `markdown` format is enabled) |
+
+**Note:** The verifier also produces a `report.html` file when the `html` format is enabled. GitHub Actions Job Summaries sanitize most HTML — stripping `<script>`, `<style>`, `<iframe>`, inline styles, and complex HTML structures — so a full HTML report would render as broken, unstyled fragments or be removed entirely. For this reason, `add-to-summary` does not support HTML reports. Upload them as artifacts instead (via `actions/upload-artifact`) and use `markdown` or `plain` formats for the job summary.
+
+**Rendering rules:**
+- Reports appear in the **same order** as specified in `add-to-summary`. When an entry is a glob alias (e.g. `markdown`, `plain`), matching files within that alias are sorted alphabetically. A file matched by more than one entry is shown once.
+- Reports are labeled by their path relative to the IDE's report directory (e.g. `plugins/my-plugin/1.0/verification-verdict.txt`), so same-named reports from different plugins stay distinguishable
+- `.md` files are collapsed in a `<details>` block when other report files are also being shown, to avoid overwhelming the summary with verbose output. When a `.md` file is the **only** report being displayed for an IDE version, it renders fully expanded.
+- `.txt` files with more than 3 lines are collapsed in a `<details>` block showing the line count
+- `.txt` files with 3 or fewer lines are shown inline in a code block
+- Files are grouped under an `## <IDE-version>` heading
+- Missing files are silently skipped
+- Path traversal (`..`) is rejected
+
+Examples:
+```yaml
+# Full markdown report
+add-to-summary: 'markdown'
+```
+```yaml
+# Just the verdict
+add-to-summary: 'verification-verdict.txt'
+```
+```yaml
+# The verdict and the compatibility problems
+add-to-summary: 'verification-verdict.txt,compatibility-problems.txt'
+```
+```yaml
+# All text files in the report directory
+add-to-summary: 'plain'
+```
+```yaml
+# All text files in the report directory and the markdown report
+add-to-summary: 'plain,markdown'
+```
+
 ## Results
 The results of the execution are captured in a file for use in subsequent steps if you so choose.
 
 You will need to give the `intellij-platform-plugin-verifier-action` step an `id`.
 
 You can then access the verifier output file by using `${{steps.<id>.outputs.verification-output-log-filename}}`.
+
+You can access the verification reports directory using `${{steps.<id>.outputs.verification-reports-dir}}`, a path relative to `GITHUB_WORKSPACE` (falling back to the raw path reported by the verifier if it does not resolve under `GITHUB_WORKSPACE`) usable directly in later steps.
 
 In the below example, we use set the `id` to `verify` - this example will print the filename as well as the contents of the file as a subsequent step to the validation:
 

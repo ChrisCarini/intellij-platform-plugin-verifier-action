@@ -1,13 +1,15 @@
 #!/bin/bash
 
 ###
-# This script expects 6 input variables:
+# This script expects 8 input variables:
 #  - intellij-plugin-verifier version
 #  - relative plugin path
 #  - new-line separated IDE + version
 #  - new-line separated Failure Levels
 #  - comma-separated mute plugin problems list
 #  - colon-separated external class prefixes list
+#  - comma-separated verification report format list
+#  - comma-separated report filenames/aliases to add to job summary
 #
 # See below for examples of these inputs.
 #
@@ -133,6 +135,12 @@ INPUT_MUTE_PLUGIN_PROBLEMS="${5-}"
 # external-prefixes: 'org.jetbrains.jps:com.example'
 INPUT_EXTERNAL_PREFIXES="${6-}"
 
+# verification-reports-formats: 'plain,markdown'
+INPUT_VERIFICATION_REPORTS_FORMATS="${7-}"
+
+# add-to-summary: 'verification-verdict.txt,compatibility-problems.txt' or aliases 'markdown', 'plain'
+INPUT_ADD_TO_SUMMARY="${8-}"
+
 # verify the specified content-type is one of the defined accepted content-types
 function is_valid_response_content_type() {
   # Remove everything after the first semicolon (;) - e.g. "application/json; charset=utf-8" -> "application/json"
@@ -226,6 +234,8 @@ gh_debug "               => $FAILURE_LEVEL"
 done
 gh_debug "INPUT_MUTE_PLUGIN_PROBLEMS => $INPUT_MUTE_PLUGIN_PROBLEMS"
 gh_debug "INPUT_EXTERNAL_PREFIXES => $INPUT_EXTERNAL_PREFIXES"
+gh_debug "INPUT_VERIFICATION_REPORTS_FORMATS => $INPUT_VERIFICATION_REPORTS_FORMATS"
+gh_debug "INPUT_ADD_TO_SUMMARY => $INPUT_ADD_TO_SUMMARY"
 
 # If the user passed in a file instead of a list, pull the IDE+version combos from the file and use that instead.
 if [[ -f "$GITHUB_WORKSPACE/$INPUT_IDE_VERSIONS" ]]; then
@@ -321,6 +331,349 @@ IDE_BASE_EXTRACT_LOCATION="$HOME/ides"
 ##
 # Functions
 ##
+
+# Parse a comma-separated string into a trimmed array stored in the named variable.
+# Usage: parse_csv "a, b, c" RESULT_ARRAY
+parse_csv() {
+  local input="$1"
+  local -n _arr="$2"
+  gh_debug "parse_csv: input=[$input]"
+  _arr=()
+  [ -z "$input" ] && gh_debug "parse_csv: input is empty, returning empty array." && return
+  IFS=',' read -ra _raw <<< "$input"
+  for _item in "${_raw[@]}"; do
+    _item="${_item#"${_item%%[![:space:]]*}"}"
+    _item="${_item%"${_item##*[![:space:]]}"}"
+    [ -n "$_item" ] && _arr+=("$_item")
+  done
+  gh_debug "parse_csv: result=[${_arr[*]}] (${#_arr[@]} items)"
+}
+
+# `plain` is the verifier's console/stdout output, not a report file. isFailureLevelSet
+# (below) determines pass/fail by grepping that output, so `plain` is always requested
+# and can not be excluded; verification-reports-formats only adds formats on top of it.
+REQUIRED_REPORT_FORMAT="plain"
+SUPPORTED_REPORT_FORMATS=("plain" "html" "markdown")
+
+# Normalize INPUT_VERIFICATION_REPORTS_FORMATS (parsed into FORMATS) into the formats to
+# request from the verifier, always including REQUIRED_REPORT_FORMAT. Unsupported
+# entries and `-`-prefixed exclusions are warned about and dropped, never fatal.
+normalize_formats() {
+  gh_debug "normalize_formats: FORMATS(in)=[${FORMATS[*]}]"
+  local -a normalized=()
+  local fmt lower is_supported known
+  for fmt in "${FORMATS[@]}"; do
+    lower="${fmt,,}"
+    if [[ "$lower" == -* ]]; then
+      echo "::warning::verification-reports-formats: excluding formats (e.g. '$fmt') is not supported; 'plain' is always enabled. Ignoring."
+      continue
+    fi
+    is_supported=false
+    for known in "${SUPPORTED_REPORT_FORMATS[@]}"; do
+      [[ "$lower" == "$known" ]] && is_supported=true && break
+    done
+    if [ "$is_supported" = false ]; then
+      echo "::warning::verification-reports-formats: unknown format '$fmt'; supported formats are ${SUPPORTED_REPORT_FORMATS[*]}. Ignoring."
+      continue
+    fi
+    normalized+=("$lower")
+  done
+
+  # If add-to-summary requests markdown, ensure the markdown format is enabled so the
+  # report.md file it looks for is actually produced. Check parsed tokens (not a raw
+  # substring match) so e.g. "my-markdown-notes.txt" doesn't falsely trigger this.
+  if [[ -n "${INPUT_ADD_TO_SUMMARY}" ]]; then
+    local -a summary_items
+    parse_csv "$INPUT_ADD_TO_SUMMARY" summary_items
+    local item item_lower wants_markdown=false
+    for item in "${summary_items[@]}"; do
+      item_lower="${item,,}"
+      if [[ "$item_lower" == "markdown" || "$item_lower" == *.md ]]; then
+        wants_markdown=true
+        break
+      fi
+    done
+    if [ "$wants_markdown" = true ]; then
+      known=false
+      for fmt in "${normalized[@]}"; do
+        [[ "$fmt" == "markdown" ]] && known=true && break
+      done
+      [ "$known" = false ] && normalized+=("markdown")
+    fi
+  fi
+
+  FORMATS=()
+  if [ ${#normalized[@]} -gt 0 ]; then
+    FORMATS=("$REQUIRED_REPORT_FORMAT")
+    for fmt in "${normalized[@]}"; do
+      [[ "$fmt" == "$REQUIRED_REPORT_FORMAT" ]] && continue
+      FORMATS+=("$fmt")
+    done
+  fi
+  gh_debug "normalize_formats: FORMATS(out)=[${FORMATS[*]}]"
+}
+
+# Build the -verification-reports-formats CLI argument string from the FORMATS array.
+# An empty FORMATS array means "let the verifier use its own default (plain,html)".
+build_formats_arg() {
+  VERIFICATION_REPORTS_FORMATS_ARGS=""
+  if [ ${#FORMATS[@]} -eq 0 ]; then
+    gh_debug "build_formats_arg: FORMATS is empty; no -verification-reports-formats arg will be added."
+    return
+  fi
+  local csv
+  csv=$(IFS=','; echo "${FORMATS[*]}")
+  VERIFICATION_REPORTS_FORMATS_ARGS="-verification-reports-formats ${csv}"
+  gh_debug "build_formats_arg: VERIFICATION_REPORTS_FORMATS_ARGS=[$VERIFICATION_REPORTS_FORMATS_ARGS]"
+}
+
+# Resolve summary aliases (markdown, plain) into file glob patterns.
+resolve_summary_patterns() {
+  local input="$1"
+  local -n _pats="$2"
+  local -a items
+  gh_debug "resolve_summary_patterns: input=[$input]"
+  parse_csv "$input" items
+  _pats=()
+  for item in "${items[@]}"; do
+    case "${item,,}" in
+      markdown) _pats+=("*.md")  ; gh_debug "resolve_summary_patterns: alias 'markdown' -> '*.md'" ;;
+      plain)    _pats+=("*.txt") ; gh_debug "resolve_summary_patterns: alias 'plain' -> '*.txt'" ;;
+      *)        _pats+=("$item") ; gh_debug "resolve_summary_patterns: literal pattern -> '$item'" ;;
+    esac
+  done
+  gh_debug "resolve_summary_patterns: resolved patterns=[${_pats[*]}] (${#_pats[@]} patterns)"
+}
+
+# Find the report directory for a given IDE version string (from build.txt, e.g. "IU-261.23567.138").
+# The verifier names report dirs identically to the build.txt content.
+find_report_dir_for_ide() {
+  local ide_version="$1"
+  local -n _dir="$2"
+  _dir="$VERIFICATION_REPORTS_DIR/$ide_version"
+  if [ -d "$_dir" ]; then
+    gh_debug "find_report_dir_for_ide: found report dir [$_dir] for IDE version [$ide_version]"
+  else
+    gh_debug "find_report_dir_for_ide: no report dir found at [$_dir] for IDE version [$ide_version]"
+    _dir=""
+  fi
+}
+
+# GitHub enforces a 1024KB (SUMMARY_HARD_LIMIT) cap on GITHUB_STEP_SUMMARY content.
+# Report content stops at the smaller SUMMARY_MAX_BYTES, leaving headroom under the hard
+# limit for the closing tags/fences and truncation warning appended after it.
+TMP_GITHUB_STEP_SUMMARY=$(mktemp)
+SUMMARY_MAX_BYTES=$((1000 * 1024))
+SUMMARY_HARD_LIMIT=$((1024 * 1024))
+SUMMARY_TRUNCATED=false
+
+# Safely append a file's content to GITHUB_STEP_SUMMARY, respecting the size limit.
+# If the file would push us over, only the bytes that fit are written and SUMMARY_TRUNCATED is set.
+safe_append_to_summary() {
+  local file="$1"
+  local current_size
+  current_size=$(wc -c < "$TMP_GITHUB_STEP_SUMMARY")
+  local remaining=$((SUMMARY_MAX_BYTES - current_size))
+
+  gh_debug "safe_append_to_summary: file=[$file] current_size=[$current_size] remaining=[$remaining]"
+
+  if [ "$remaining" -le 0 ]; then
+    gh_debug "safe_append_to_summary: no space remaining; setting SUMMARY_TRUNCATED=true."
+    SUMMARY_TRUNCATED=true
+    return
+  fi
+
+  local file_size
+  file_size=$(wc -c < "$file")
+  gh_debug "safe_append_to_summary: file_size=[$file_size]"
+
+  if [ "$file_size" -le "$remaining" ]; then
+    gh_debug "safe_append_to_summary: appending full file [$file]."
+    cat "$file" >> "$TMP_GITHUB_STEP_SUMMARY"
+  else
+    gh_debug "safe_append_to_summary: file exceeds remaining space; truncating to [$remaining] bytes and setting SUMMARY_TRUNCATED=true."
+    head -c "$remaining" "$file" >> "$TMP_GITHUB_STEP_SUMMARY"
+    SUMMARY_TRUNCATED=true
+  fi
+
+  # Ensure trailing newline so closing markup never glues onto truncated content.
+  if [ -s "$TMP_GITHUB_STEP_SUMMARY" ] && [ -n "$(tail -c 1 "$TMP_GITHUB_STEP_SUMMARY")" ]; then
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+  fi
+}
+
+# Append a single report file to TMP_GITHUB_STEP_SUMMARY with appropriate formatting.
+# .md files are rendered raw; .txt >3 lines collapsed; .txt <=3 lines inline code block.
+# Uses safe_append_to_summary for the file content so tags are always properly closed.
+# $1 = file path, $2 = total_files in this IDE's summary, $3 = display label (defaults
+# to the basename).
+append_file_to_summary() {
+  [ "$SUMMARY_TRUNCATED" = true ] && gh_debug "append_file_to_summary: SUMMARY_TRUNCATED is true; skipping [$1]." && return
+
+  local file="$1"
+  local total_files="${2:-2}"
+  local label="${3:-$(basename "$file")}"
+  local line_count
+  line_count=$(awk 'END{print NR+0}' "$file")
+
+  gh_debug "append_file_to_summary: file=[$file] label=[$label] line_count=[$line_count] total_files=[$total_files]"
+
+  if [[ "${label,,}" == *.md ]] ; then
+    if [ "$total_files" -gt 1 ] ; then
+      gh_debug "append_file_to_summary: rendering [$label] as collapsed <details> markdown block."
+      echo "<details>" >> "$TMP_GITHUB_STEP_SUMMARY"
+      echo "<summary><strong>$label</strong> ($line_count lines)</summary>" >> "$TMP_GITHUB_STEP_SUMMARY"
+      echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+      safe_append_to_summary "$file"
+      echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+      echo "</details>" >> "$TMP_GITHUB_STEP_SUMMARY"
+    else
+      gh_debug "append_file_to_summary: rendering [$label] as expanded markdown (only file)."
+      safe_append_to_summary "$file"
+      echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+    fi
+  elif [ "$line_count" -gt 3 ] ; then
+    gh_debug "append_file_to_summary: rendering [$label] as collapsed <details> code block ($line_count lines > 3)."
+    echo "<details>" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "<summary><strong>$label</strong> ($line_count lines)</summary>" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo '`````' >> "$TMP_GITHUB_STEP_SUMMARY"
+    safe_append_to_summary "$file"
+    echo '`````' >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "</details>" >> "$TMP_GITHUB_STEP_SUMMARY"
+  else
+    gh_debug "append_file_to_summary: rendering [$label] as inline code block ($line_count lines <= 3)."
+    echo "**$label**" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo '`````' >> "$TMP_GITHUB_STEP_SUMMARY"
+    safe_append_to_summary "$file"
+    echo '`````' >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+  fi
+
+  # If we hit the limit, append the warning now that tags are closed
+  if [ "$SUMMARY_TRUNCATED" = true ]; then
+    gh_debug "append_file_to_summary: SUMMARY_TRUNCATED detected after writing [$label]; appending truncation warning."
+    printf '\n---\n\n> **Warning:** Job summary truncated to stay within GitHub'\''s 1024KB size limit. See the verification output log for full details.\n' >> "$TMP_GITHUB_STEP_SUMMARY"
+  fi
+}
+
+# Write the job summary section for a single IDE version.
+write_summary_for_ide() {
+  local ide_version="$1"
+  shift
+  local patterns=("$@")
+
+  gh_debug "write_summary_for_ide: ide_version=[$ide_version] patterns=[${patterns[*]}]"
+  echo "## $ide_version" >> "$TMP_GITHUB_STEP_SUMMARY"
+  echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+
+  local ide_dir
+  find_report_dir_for_ide "$ide_version" ide_dir
+  if [ -z "$ide_dir" ] || [ ! -d "$ide_dir" ] ; then
+    gh_debug "write_summary_for_ide: no report dir found for [$ide_version]; writing NO REPORTS FOUND."
+    echo "**NO REPORTS FOUND**" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+    return
+  fi
+
+  local reports_realpath
+  reports_realpath="$(realpath "$VERIFICATION_REPORTS_DIR")"
+  gh_debug "write_summary_for_ide: scanning [$ide_dir] (reports_realpath=[$reports_realpath])"
+
+  # Collect all matching files into an array in a single pass, deduplicating by real
+  # path so overlapping patterns (e.g. an explicit filename plus the "plain" alias that
+  # also matches it) don't render the same report twice.
+  local -a matched_files=()
+  local -A seen_files=()
+  for pattern in "${patterns[@]}"; do
+    [[ "$pattern" == *..* ]] && gh_debug "Skipping pattern with path traversal: $pattern" && continue
+    while IFS= read -r -d '' file; do
+      local real_file
+      real_file="$(realpath "$file")"
+      case "$real_file" in
+        "${reports_realpath}/"*) ;;
+        *) gh_debug "Skipping file outside reports dir: $file"; continue ;;
+      esac
+      [ -f "$file" ] || continue
+      if [ -n "${seen_files[$real_file]-}" ]; then
+        gh_debug "write_summary_for_ide: [$file] already matched by an earlier pattern; skipping duplicate."
+        continue
+      fi
+      seen_files[$real_file]=1
+      gh_debug "write_summary_for_ide: matched file [$file] for pattern [$pattern]"
+      matched_files+=("$file")
+    done < <(find "$ide_dir" -name "$pattern" -print0 | sort -z)
+  done
+
+  if [ ${#matched_files[@]} -eq 0 ] ; then
+    gh_debug "write_summary_for_ide: no matching files found for [$ide_version]; writing NO REPORTS FOUND."
+    echo "**NO REPORTS FOUND**" >> "$TMP_GITHUB_STEP_SUMMARY"
+    echo "" >> "$TMP_GITHUB_STEP_SUMMARY"
+  else
+    local total_files=${#matched_files[@]}
+    gh_debug "write_summary_for_ide: appending $total_files file(s) to summary for [$ide_version]."
+    local file label
+    for file in "${matched_files[@]}"; do
+      # Label with the path relative to the IDE report dir (e.g.
+      # "plugins/my-plugin/1.0/verification-verdict.txt") so files with identical
+      # basenames from different plugins remain distinguishable in the summary.
+      label="${file#"$ide_dir"/}"
+      append_file_to_summary "$file" "$total_files" "$label"
+    done
+  fi
+}
+
+# Write the full job summary across all verified IDEs.
+write_job_summary() {
+  echo "::group::Writing to job summary..."
+  gh_debug ""
+  if [ -z "${GITHUB_STEP_SUMMARY-}" ]; then
+    echo "::warning::GITHUB_STEP_SUMMARY is not set; skipping job summary output."
+    echo "::endgroup::"
+    return
+  fi
+  if [ -z "$VERIFICATION_REPORTS_DIR" ]; then
+    echo "No verification report dir found"
+    echo "::endgroup::"
+    return
+  fi
+  gh_debug "write_job_summary: INPUT_ADD_TO_SUMMARY=[$INPUT_ADD_TO_SUMMARY]"
+  gh_debug "write_job_summary: VERIFICATION_REPORTS_DIR=[$VERIFICATION_REPORTS_DIR]"
+  gh_debug "write_job_summary: IDE_DIRECTORIES=[$IDE_DIRECTORIES]"
+  local -a patterns
+  resolve_summary_patterns "$INPUT_ADD_TO_SUMMARY" patterns
+  gh_debug "write_job_summary: resolved patterns=[${patterns[*]}]"
+
+  # shellcheck disable=SC2086
+  for ide_dir in $IDE_DIRECTORIES; do
+    if [ "$SUMMARY_TRUNCATED" = true ]; then
+      gh_debug "write_job_summary: SUMMARY_TRUNCATED is true; stopping iteration."
+      break
+    fi
+    [ -d "$ide_dir" ] || { gh_debug "write_job_summary: [$ide_dir] is not a directory, skipping."; continue; }
+    if [ ! -r "$ide_dir/build.txt" ]; then
+      gh_debug "write_job_summary: no readable build.txt in [$ide_dir], skipping."
+      continue
+    fi
+    local ide_version
+    ide_version=$(<"$ide_dir/build.txt")
+    [ -z "$ide_version" ] && gh_debug "write_job_summary: build.txt in [$ide_dir] is empty, skipping." && continue
+    gh_debug "write_job_summary: processing IDE version [$ide_version] from dir [$ide_dir]"
+    write_summary_for_ide "$ide_version" "${patterns[@]}"
+  done
+  local tmp_size
+  tmp_size=$(wc -c < "$TMP_GITHUB_STEP_SUMMARY")
+  local bytes_to_write=$(( tmp_size < SUMMARY_HARD_LIMIT ? tmp_size : SUMMARY_HARD_LIMIT ))
+  gh_debug "write_job_summary: flushing TMP_GITHUB_STEP_SUMMARY to GITHUB_STEP_SUMMARY (writing $bytes_to_write of $tmp_size bytes; max $SUMMARY_HARD_LIMIT bytes)."
+  head -c "$SUMMARY_HARD_LIMIT" "$TMP_GITHUB_STEP_SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+  if [ "$bytes_to_write" -lt "$tmp_size" ] && [ -n "$(tail -c 1 "$GITHUB_STEP_SUMMARY")" ]; then
+    echo "" >> "$GITHUB_STEP_SUMMARY"
+  fi
+
+  echo "::endgroup::" # END "Writing to job summary..." block.
+}
+
 release_type_for() {
   # release_type_for "2019.3-EAP-SNAPSHOT" -> 'snapshots'
   # release_type_for "2019.3-SNAPSHOT" -> 'nightly'
@@ -422,11 +775,10 @@ debug_ide_base_extract_location_size
 
 echo "Preparing all IDE versions specified..."
 echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
-  echo "::group::Preparing [$IDE_VERSION]..."
   if [ -z "$IDE_VERSION" ]; then
-    gh_debug "IDE_VERSION is empty; continuing with next iteration."
-    break
+    continue
   fi
+  echo "::group::Preparing [$IDE_VERSION]..."
 
   # IDE = ideaIU, ideaIC, pycharmPC, goland, clion, etc.
   IDE=$(echo "$IDE_VERSION" | cut -f1 -d:)
@@ -509,6 +861,16 @@ if [ "${INPUT_EXTERNAL_PREFIXES}" ] ; then
   EXTERNAL_PREFIX_ARGS="-external-prefixes ${INPUT_EXTERNAL_PREFIXES}"
 fi
 
+# Build verification report format arguments
+echo "::group::Building verification report format arguments..."
+parse_csv "$INPUT_VERIFICATION_REPORTS_FORMATS" FORMATS
+gh_debug "FORMATS after parse_csv => [${FORMATS[*]}] (${#FORMATS[@]} items)"
+normalize_formats
+gh_debug "FORMATS after normalize_formats => [${FORMATS[*]}] (${#FORMATS[@]} items)"
+build_formats_arg
+gh_debug "VERIFICATION_REPORTS_FORMATS_ARGS => [$VERIFICATION_REPORTS_FORMATS_ARGS]"
+echo "::endgroup::" # END "Building verification report format arguments..." block.
+
 ##
 # Print ENVVARs for debugging.
 ##
@@ -541,7 +903,7 @@ echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIR
 VERIFICATION_OUTPUT_LOG="verification_result.log"
 echo "::group::Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..."
 
-gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS"
+gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS $VERIFICATION_REPORTS_FORMATS_ARGS"
 
 # We don't wrap $IDE_DIRECTORIES or $MUTE_ARGS in quotes at the end of this to
 # allow the single string of args (ie, `"a b c"`) be broken into multiple
@@ -558,7 +920,7 @@ gh_debug "RUNNING COMMAND: java -jar \"$VERIFIER_JAR_LOCATION\" check-plugin $PL
 set +o errexit
 
 # shellcheck disable=SC2086
-java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
+java -jar "$VERIFIER_JAR_LOCATION" check-plugin $PLUGIN_LOCATION $IDE_DIRECTORIES $MUTE_ARGS $EXTERNAL_PREFIX_ARGS $VERIFICATION_REPORTS_FORMATS_ARGS 2>&1 | tee "$VERIFICATION_OUTPUT_LOG"
 # We use `${PIPESTATUS[0]}` here instead of `$?` as the later returns the status code for the `tee` call, and we want the status code of the `java` invocation of the verifier, which `${PIPESTATUS[0]}` provides.
 VERIFICATION_SUCCESSFUL=${PIPESTATUS[0]}
 
@@ -567,7 +929,35 @@ set -o errexit
 
 echo "::endgroup::" # END "Running verification on $PLUGIN_LOCATION for $IDE_DIRECTORIES..." block.
 
-echo "verification-output-log-filename=$VERIFICATION_OUTPUT_LOG" >> $GITHUB_OUTPUT
+echo "verification-output-log-filename=$VERIFICATION_OUTPUT_LOG" >> "$GITHUB_OUTPUT"
+
+# Parse the verification reports directory from the verifier's stdout, taking only the
+# first match so a repeated line can't produce a multi-line $GITHUB_OUTPUT value.
+VERIFICATION_REPORTS_DIR=$(sed -n '/^Verification reports directory: /{s/^Verification reports directory: //;p;q}' "$VERIFICATION_OUTPUT_LOG")
+gh_debug "VERIFICATION_REPORTS_DIR => $VERIFICATION_REPORTS_DIR"
+
+# The verifier prints a container-absolute path (cwd is $GITHUB_WORKSPACE in this
+# Docker action); strip that prefix so the output is a host-relative path, matching
+# verification-output-log-filename. Compare realpaths (not raw strings) so this still
+# matches when trailing slashes or symlinks make the raw prefix comparison miss.
+VERIFICATION_REPORTS_DIR_OUTPUT="$VERIFICATION_REPORTS_DIR"
+if [[ -n "$GITHUB_WORKSPACE" && -n "$VERIFICATION_REPORTS_DIR" ]]; then
+  workspace_realpath="$(realpath "$GITHUB_WORKSPACE")"
+  reports_dir_realpath="$(realpath -m "$VERIFICATION_REPORTS_DIR")"
+  if [[ "$reports_dir_realpath" == "$workspace_realpath/"* ]]; then
+    VERIFICATION_REPORTS_DIR_OUTPUT="${reports_dir_realpath#"$workspace_realpath/"}"
+  else
+    gh_debug "VERIFICATION_REPORTS_DIR does not resolve under GITHUB_WORKSPACE; emitting output unchanged (absolute)."
+  fi
+fi
+echo "verification-reports-dir=$VERIFICATION_REPORTS_DIR_OUTPUT" >> "$GITHUB_OUTPUT"
+
+# Run in a subshell with relaxed error handling so a failure here can't mask the
+# verification verdict computed below.
+if [ -n "${INPUT_ADD_TO_SUMMARY}" ]; then
+  ( set +o errexit +o nounset; write_job_summary ) \
+    || echo "::warning::Failed to write the job summary; continuing to the verification verdict."
+fi
 
 error_wall() {
   echo "::error::=============================================="
@@ -639,7 +1029,7 @@ elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NOT_DYNAMIC" "Plugin cannot b
 elif isFailureLevelSet "$VERIFICATION_OUTPUT_LOG" "NOT_DYNAMIC" "Plugin probably cannot be enabled or disabled without IDE restart"; then
   error_wall
 
-elif [ ${VERIFICATION_SUCCESSFUL} == 1 ]; then
+elif [ "$VERIFICATION_SUCCESSFUL" -ne 0 ]; then
   # We end the block here, as only `isFailureLevelSet` sets the endgroup for us.
   echo "::endgroup::" # END "Running validations against output..." block.
 
@@ -650,7 +1040,7 @@ elif [ ${VERIFICATION_SUCCESSFUL} == 1 ]; then
   echo "::error::===                                                 ==="
   echo "::error::===   NOTICE!  NOTICE!  NOTICE!  NOTICE!  NOTICE!   ==="
   echo "::error::===                                                 ==="
-  echo "::error::===   The verifier exited with a status code of 0   ==="
+  echo "::error::===   The verifier exited with a status code of $VERIFICATION_SUCCESSFUL   ==="
   echo "::error::===   and was unable to identify a known failure    ==="
   echo "::error::===   from the verifier. Consider opening an        ==="
   echo "::error::===   issue with the maintainers of this GitHub     ==="
