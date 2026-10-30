@@ -139,6 +139,13 @@ assumes that [gradle-intellij-plugin](https://github.com/JetBrains/gradle-intell
 
 This required input sets which IDEs and versions the plugins will be validated against.
 
+For the IDEs listed below (and `LATEST-EAP-SNAPSHOT`), releases are resolved via the
+[JetBrains Products API](https://data.services.jetbrains.com/products) and downloaded from
+`download.jetbrains.com`, which bundles a JBR, so the verifier checks against that IDE's own
+JDK rather than the container's. Anything else falls back to the plain zip from the
+[IntelliJ 'Releases' Repository](https://www.jetbrains.com/intellij-repository/releases/),
+which doesn't bundle one.
+
 You can identify the value for `<ide>` and `<version>` as follows.
 
 1) Navigate to the [IntelliJ 'Releases' Repository](https://www.jetbrains.com/intellij-repository/releases/)

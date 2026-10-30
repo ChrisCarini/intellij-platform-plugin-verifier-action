@@ -14,6 +14,7 @@
 # This script expects the following CLI tools be available:
 #   - curl
 #   - jq
+#   - tar, gzip, sha256sum (for IDEs downloaded via the JetBrains Products API)
 #
 # NOTE: This script works with GitHub Actions Debug Logging. Read more about it here: https://help.github.com/en/actions/configuring-and-managing-workflows/managing-a-workflow-run#enabling-step-debug-logging
 #       To enable, set the following secret in the repository that contains the workflow using this action:
@@ -300,11 +301,6 @@ gh_debug "VERIFIER_JAR_LOCATION => $VERIFIER_JAR_LOCATION"
 # Other Variables
 ##
 
-# Set the correct JAVA_HOME path for the container because this is overwritten by the setup-java action.
-# We use the docker image `adoptopenjdk/openjdk11:alpine-slim` - https://hub.docker.com/layers/adoptopenjdk/openjdk11/alpine-slim/images/sha256-ef65f9b755ba9d70580d3b5e4ea7f133c68cecc096171959d011b38c4728f6b2?context=explore
-#  and pull the `JAVA_HOME` property from it's image (ie, its definition has `ENV JAVA_HOME=/opt/java/openjdk`).
-JAVA_HOME="/opt/java/openjdk"
-
 # The location of the plugin
 PLUGIN_LOCATION="$GITHUB_WORKSPACE/$INPUT_PLUGIN_LOCATION"
 
@@ -321,6 +317,68 @@ IDE_BASE_EXTRACT_LOCATION="$HOME/ides"
 ##
 # Functions
 ##
+
+# Maps this action's existing IDE codes (the Maven-repository artifactIds users pass in
+# ide-versions, e.g. `ideaIU:2025.3.6`) to JetBrains's own product codes, used to query the
+# JetBrains Products API (https://data.services.jetbrains.com/products/releases). There is no
+# way to derive this mapping from the API itself; the unfiltered `/products` listing exposes
+# only `code`/`intellijProductCode`/`alternativeCodes`, never these Maven-style ids.
+declare -A PRODUCT_CODE=(
+  [ideaIC]=IC [ideaIU]=IU [pycharmPC]=PC [pycharmPY]=PY [goland]=GO [clion]=CL
+  [rubymine]=RM [webstorm]=WS [phpstorm]=PS [riderRD]=RD [rustrover]=RR
+  [datagrip]=DB [dataspell]=DS [mps]=MPS
+)
+
+# Sets DOWNLOAD_URL and CHECKSUM_URL (both left empty on any miss) for one IDE:VERSION, by
+# querying the JetBrains Products API. Downloads resolved this way are the real installer
+# tarballs (they bundle a JBR), unlike the intellij-repository zip this script falls back to
+# below, which never bundles one. The response's top-level JSON key is not guaranteed to echo
+# the queried code back (e.g. `code=IU` comes back keyed "IIU"), so it's read positionally via
+# `to_entries[0].value`, not by re-indexing with $code.
+resolve_installer_download() {
+  local ide="$1" version="$2"
+  DOWNLOAD_URL="" ; CHECKSUM_URL=""
+  local code="${PRODUCT_CODE[$ide]-}"
+  if [ -z "$code" ]; then
+    gh_debug "resolve_installer_download: no product-code mapping for IDE [$ide]; falling back to intellij-repository."
+    return
+  fi
+
+  # A literal "LATEST-EAP-SNAPSHOT" sentinel (the one sentinel this action's README documents)
+  # resolves to the newest EAP build directly. Any other value is matched exactly against the
+  # release channel; a concrete EAP/RC build number simply won't match there and correctly
+  # falls through to the intellij-repository path further down, no extra handling needed.
+  local type_param="type=release" match_version="$version"
+  if [[ "${version^^}" == "LATEST-EAP-SNAPSHOT" ]]; then
+    type_param="type=eap&latest=true"
+    match_version=""
+  fi
+
+  local api_json
+  api_json=$(curl -sS "https://data.services.jetbrains.com/products/releases?platform=linux&${type_param}&code=${code}") || return
+  local releases
+  releases=$(echo "$api_json" | jq -c '[to_entries[0].value[]?]' 2>/dev/null) || return
+
+  local entry
+  if [ -n "$match_version" ]; then
+    entry=$(echo "$releases" | jq -c --arg v "$match_version" 'map(select(.version == $v or .build == $v)) | .[0] // empty')
+  else
+    entry=$(echo "$releases" | jq -c '.[0] // empty')
+  fi
+  if [ -z "$entry" ] || [ "$entry" = "null" ]; then
+    gh_debug "resolve_installer_download: no matching release for [$ide:$version] (code=[$code]); falling back to intellij-repository."
+    return
+  fi
+
+  DOWNLOAD_URL=$(echo "$entry" | jq -r '.downloads.linux.link // empty')
+  if [ -n "$DOWNLOAD_URL" ]; then
+    CHECKSUM_URL=$(echo "$entry" | jq -r '.downloads.linux.checksumLink // empty')
+    gh_debug "resolve_installer_download: [$ide:$version] -> DOWNLOAD_URL=[$DOWNLOAD_URL] CHECKSUM_URL=[$CHECKSUM_URL]"
+  else
+    gh_debug "resolve_installer_download: matched release for [$ide:$version] has no downloads.linux; falling back to intellij-repository."
+  fi
+}
+
 release_type_for() {
   # release_type_for "2019.3-EAP-SNAPSHOT" -> 'snapshots'
   # release_type_for "2019.3-SNAPSHOT" -> 'nightly'
@@ -440,25 +498,84 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
   # RELEASE_TYPE = snapshots, nightly, releases
   RELEASE_TYPE=$(release_type_for "$VERSION")
 
-  DOWNLOAD_URL="https://www.jetbrains.com/intellij-repository/$RELEASE_TYPE/com/jetbrains/intellij/$IDE_DIR/$IDE/$VERSION/$IDE-$VERSION.zip"
+  # Try the JetBrains Products API first - it resolves to a real installer download that
+  # bundles a JBR, so the verifier can resolve JDK API classes against the IDE's own runtime
+  # instead of whatever JDK happens to be running this container. Falls back to the
+  # intellij-repository zip (no bundled JBR) below for anything it can't resolve.
+  resolve_installer_download "$IDE" "$VERSION" || true
 
-  ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
+  if [ -n "$DOWNLOAD_URL" ]; then
+    ZIP_FILE_PATH="$HOME/$IDE-$VERSION.tar.gz"
 
-  echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
+    echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
 
-  # the content-type headers returned by the platform download calls
-  PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed application/zip"
-  curl_with_retry "$ZIP_FILE_PATH" "$DOWNLOAD_URL" "$PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES" 65
+    # `download.jetbrains.com` returns this nonstandard Content-Type for installer downloads.
+    PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed application/zip binary/octet-stream"
+    curl_with_retry "$ZIP_FILE_PATH" "$DOWNLOAD_URL" "$PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES" 65
 
-  gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
-  # Turn off 'exit on error'; if we error out when testing the zip file,
-  # we want to first print a friendly message to the user and then exit.
-  set +o errexit
-  zip -T "$ZIP_FILE_PATH"
-  if [[ $? -eq 0 ]]; then
-    gh_debug "[$ZIP_FILE_PATH] appears to be a valid zip file. Proceeding..."
+    # Turn off 'exit on error'; if we error out when verifying the download, we want to
+    # first print a friendly message to the user and then exit.
+    set +o errexit
+    if [ -n "$CHECKSUM_URL" ]; then
+      gh_debug "Verifying [$ZIP_FILE_PATH] against checksum [$CHECKSUM_URL]..."
+      EXPECTED_SHA256=$(curl -sS "$CHECKSUM_URL" | awk '{print $1}')
+      ACTUAL_SHA256=$(sha256sum "$ZIP_FILE_PATH" | awk '{print $1}')
+      [ -n "$EXPECTED_SHA256" ] && [ "$EXPECTED_SHA256" = "$ACTUAL_SHA256" ]
+      DOWNLOAD_VALID=$?
+    else
+      gh_debug "No checksum available for [$ZIP_FILE_PATH]; falling back to a gzip integrity check..."
+      gzip -t "$ZIP_FILE_PATH"
+      DOWNLOAD_VALID=$?
+    fi
+    if [[ $DOWNLOAD_VALID -eq 0 ]]; then
+      gh_debug "[$ZIP_FILE_PATH] passed integrity verification. Proceeding..."
+    else
+      read -r -d '' message <<EOF
+::error::=======================================================================================
+::error::It appears $ZIP_FILE_PATH failed integrity verification.
+::error::
+::error::This can happen when the download did not work properly, or if $IDE_VERSION is
+::error::not a valid IDE / version. If you believe it is a valid version, please open
+::error::an issue on GitHub:
+::error::     https://github.com/ChrisCarini/intellij-platform-plugin-verifier-action/issues/new
+::error::
+::error::As a precaution, we are failing this execution.
+::error::=======================================================================================
+EOF
+      # Print the message once in this log group, and then save for after so it's more visible to the user.
+      echo "$message" ; echo "$message" >> $post_loop_messages
+      exit 66 # An error has occurred - invalid zip file.
+    fi
+    # Restore 'exit on error', as the test is over.
+    set -o errexit
+
+    IDE_EXTRACT_LOCATION="${IDE_BASE_EXTRACT_LOCATION}/$IDE-$VERSION"
+    echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
+    mkdir -p "$IDE_EXTRACT_LOCATION"
+    # The installer tarball wraps everything in one top-level directory (e.g.
+    # `idea-IU-253.33813.25/`); strip it so the layout matches the intellij-repository path's
+    # flat $IDE_EXTRACT_LOCATION/{bin,lib,jbr,...}.
+    tar -xzf "$ZIP_FILE_PATH" -C "$IDE_EXTRACT_LOCATION" --strip-components=1
   else
-    read -r -d '' message <<EOF
+    DOWNLOAD_URL="https://www.jetbrains.com/intellij-repository/$RELEASE_TYPE/com/jetbrains/intellij/$IDE_DIR/$IDE/$VERSION/$IDE-$VERSION.zip"
+
+    ZIP_FILE_PATH="$HOME/$IDE-$VERSION.zip"
+
+    echo "Downloading $IDE $IDE_VERSION from [$DOWNLOAD_URL] into [$ZIP_FILE_PATH]..."
+
+    # the content-type headers returned by the platform download calls
+    PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES="application/octet-stream application/x-zip-compressed application/zip"
+    curl_with_retry "$ZIP_FILE_PATH" "$DOWNLOAD_URL" "$PLATFORM_RESPONSE_ACCEPTED_CONTENT_TYPES" 65
+
+    gh_debug "Testing [$ZIP_FILE_PATH] to ensure it is a valid zip file..."
+    # Turn off 'exit on error'; if we error out when testing the zip file,
+    # we want to first print a friendly message to the user and then exit.
+    set +o errexit
+    zip -T "$ZIP_FILE_PATH"
+    if [[ $? -eq 0 ]]; then
+      gh_debug "[$ZIP_FILE_PATH] appears to be a valid zip file. Proceeding..."
+    else
+      read -r -d '' message <<EOF
 ::error::=======================================================================================
 ::error::It appears $ZIP_FILE_PATH is not a valid zip file.
 ::error::
@@ -470,17 +587,18 @@ echo "$INPUT_IDE_VERSIONS" | while read -r IDE_VERSION; do
 ::error::As a precaution, we are failing this execution.
 ::error::=======================================================================================
 EOF
-    # Print the message once in this log group, and then save for after so it's more visible to the user.
-    echo "$message" ; echo "$message" >> $post_loop_messages
-    exit 66 # An error has occurred - invalid zip file.
-  fi
-  # Restore 'exit on error', as the test is over.
-  set -o errexit
+      # Print the message once in this log group, and then save for after so it's more visible to the user.
+      echo "$message" ; echo "$message" >> $post_loop_messages
+      exit 66 # An error has occurred - invalid zip file.
+    fi
+    # Restore 'exit on error', as the test is over.
+    set -o errexit
 
-  IDE_EXTRACT_LOCATION="${IDE_BASE_EXTRACT_LOCATION}/$IDE-$VERSION"
-  echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
-  mkdir -p "$IDE_EXTRACT_LOCATION"
-  unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
+    IDE_EXTRACT_LOCATION="${IDE_BASE_EXTRACT_LOCATION}/$IDE-$VERSION"
+    echo "Extracting [$ZIP_FILE_PATH] into [$IDE_EXTRACT_LOCATION]..."
+    mkdir -p "$IDE_EXTRACT_LOCATION"
+    unzip -q -d "$IDE_EXTRACT_LOCATION" "$ZIP_FILE_PATH"
+  fi
 
   debug_ide_base_extract_location_size
 
@@ -519,7 +637,6 @@ IDE_DIRECTORIES=$(cat "$tmp_ide_directories" | sed -e 's/^[[:space:]]*//' -e 's/
 gh_debug "IDE_DIRECTORIES => [$IDE_DIRECTORIES]"
 gh_debug "=========================================================="
 gh_debug "which java: $(which java)"
-gh_debug "JAVA_HOME: $JAVA_HOME"
 gh_debug "=========================================================="
 gh_debug "Contents of \$HOME => [$HOME] :"
 ls -lash $HOME | gh_debug
