@@ -19,7 +19,8 @@ RUN apk --no-cache add curl
 RUN apk --no-cache add zip
 
 # We may need the gh CLI to run API commands (for more GH API requests per hour)
-RUN wget https://github.com/cli/cli/releases/download/v2.1.0/gh_2.1.0_linux_386.tar.gz -O ghcli.tar.gz && tar --strip-components=1 -xf ghcli.tar.gz
+# Use amd64 to avoid legacy 32-bit socketcall restrictions in container seccomp profiles.
+RUN wget https://github.com/cli/cli/releases/download/v2.1.0/gh_2.1.0_linux_amd64.tar.gz -O ghcli.tar.gz && tar --strip-components=1 -xf ghcli.tar.gz
 
 # Copies your code file from the repository to the filesystem path `/` of the container
 COPY entrypoint.sh /entrypoint.sh
